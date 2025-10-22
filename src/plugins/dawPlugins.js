@@ -1,5 +1,6 @@
 // Base plugin class for DAW tracks
 import { reactive } from 'vue'
+import { useDialogStore } from '@/stores/dialog'
 
 export class TrackPlugin {
   constructor(track) {
@@ -47,9 +48,11 @@ export class FileLoaderPlugin extends TrackPlugin {
     try {
       const arr = await file.arrayBuffer();
       this.state.buffer = await this.audioCtx.decodeAudioData(arr.slice(0));
-      alert(`${this.track.name} — Sample loaded (${Math.round(this.state.buffer.duration * 1000) / 1000}s)`);
+      const dialog = useDialogStore()
+      await dialog.showAlert(`${this.track.name} — Sample loaded (${Math.round(this.state.buffer.duration * 1000) / 1000}s)`, 'Sample Loaded')
     } catch (error) {
-      alert('Error loading file: ' + error.message);
+      const dialog = useDialogStore()
+      await dialog.showAlert('Error loading file: ' + error.message, 'Load Error')
     }
   }
 

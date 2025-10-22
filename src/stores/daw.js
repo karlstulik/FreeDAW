@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed, watch } from 'vue'
 import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin } from '@/plugins/dawPlugins'
+import { useDialogStore } from '@/stores/dialog'
 
 let audioCtx = null;
 
@@ -93,8 +94,10 @@ export const useDawStore = defineStore('daw', () => {
     track.pluginType = newPluginType;
   }
 
-  function deleteTrack(track) {
-    if (confirm('Delete track "' + track.name + '"?')) {
+  async function deleteTrack(track) {
+    const dialog = useDialogStore()
+    const confirmed = await dialog.showConfirm('Delete track "' + track.name + '"?', 'Delete Track')
+    if (confirmed) {
       // Destroy plugin
       if (track.plugin && track.plugin.destroy) {
         track.plugin.destroy();
@@ -211,7 +214,11 @@ export const useDawStore = defineStore('daw', () => {
   }
 
   async function exportMixdown() {
-    if (tracks.length === 0) return alert('No tracks to export');
+    if (tracks.length === 0) {
+      const dialog = useDialogStore()
+      await dialog.showAlert('No tracks to export')
+      return
+    }
     const bpmVal = parseFloat(bpm.value) || 120;
     const stepsCountVal = parseInt(stepsCount.value, 10) || 16;
     const quarterNoteSec = 60.0 / bpmVal;

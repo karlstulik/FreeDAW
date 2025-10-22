@@ -15,6 +15,8 @@
         <Sequencer />
       </v-container>
     </v-main>
+
+    <Dialog />
   </v-app>
 </template>
 
@@ -23,6 +25,7 @@ import { ref } from 'vue'
 import Transport from './components/Transport.vue'
 import TrackList from './components/TrackList.vue'
 import Sequencer from './components/Sequencer.vue'
+import Dialog from './components/Dialog.vue'
 import { useDaw } from '@/composables/useDaw'
 
 const { createTrack } = useDaw()

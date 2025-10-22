@@ -84,6 +84,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
+import { useDialogStore } from '@/stores/dialog'
 import FileLoaderPlugin from './plugins/FileLoaderPlugin.vue'
 import KickGeneratorPlugin from './plugins/KickGeneratorPlugin.vue'
 import ToneGeneratorPlugin from './plugins/ToneGeneratorPlugin.vue'
@@ -103,8 +104,9 @@ const getPluginComponent = (pluginType) => {
   return pluginComponents[pluginType] || null
 }
 
-const renameTrack = (track) => {
-  const newName = prompt('Rename track', track.name)
+const renameTrack = async (track) => {
+  const dialog = useDialogStore()
+  const newName = await dialog.showPrompt('Enter new track name', 'Rename Track', track.name)
   if (newName) {
     track.name = newName
   }
