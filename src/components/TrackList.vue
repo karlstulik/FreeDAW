@@ -140,6 +140,9 @@ import KickGeneratorPlugin from './plugins/KickGeneratorPlugin.vue'
 import ToneGeneratorPlugin from './plugins/ToneGeneratorPlugin.vue'
 import BassGeneratorPlugin from './plugins/BassGeneratorPlugin.vue'
 import ClapGeneratorPlugin from './plugins/ClapGeneratorPlugin.vue'
+import SnareGeneratorPlugin from './plugins/SnareGeneratorPlugin.vue'
+import HiHatGeneratorPlugin from './plugins/HiHatGeneratorPlugin.vue'
+import WhiteNoiseGeneratorPlugin from './plugins/WhiteNoiseGeneratorPlugin.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import Knob from './Knob.vue'
 
@@ -160,7 +163,10 @@ const pluginComponents = {
   'kick-generator': KickGeneratorPlugin,
   'tone-generator': ToneGeneratorPlugin,
   'bass-generator': BassGeneratorPlugin,
-  'clap-generator': ClapGeneratorPlugin
+  'clap-generator': ClapGeneratorPlugin,
+  'snare-generator': SnareGeneratorPlugin,
+  'hihat-generator': HiHatGeneratorPlugin,
+  'white-noise-generator': WhiteNoiseGeneratorPlugin
 }
 
 const getPluginComponent = (pluginType) => {

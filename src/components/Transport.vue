@@ -87,7 +87,7 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
-import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin, ClapGeneratorPlugin } from '@/plugins/dawPlugins'
+import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin, ClapGeneratorPlugin, SnareGeneratorPlugin, HiHatGeneratorPlugin, WhiteNoiseGeneratorPlugin } from '@/plugins/dawPlugins'
 
 const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
@@ -144,7 +144,8 @@ const previewPlugin = async (pluginType) => {
 
     // Play preview
     const now = audioCtx.currentTime + 0.1 // Small delay
-    plugin.play(now, 0.5) // Play for 0.5 seconds
+    const previewLength = pluginType === 'white-noise-generator' ? 1.5 : 0.5
+    plugin.play(now, previewLength)
 
   } catch (error) {
     console.error('Error playing preview:', error)
@@ -162,7 +163,10 @@ const getPluginIcon = (pluginType) => {
     'tone-generator': 'mdi-waveform',
     'kick-generator': 'mdi-kickstarter',
     'bass-generator': 'mdi-speaker-wireless',
-    'clap-generator': 'mdi-hand-clap'
+    'clap-generator': 'mdi-hand-clap',
+    'snare-generator': 'mdi-drum',
+    'hihat-generator': 'mdi-music-note-sixteenth',
+    'white-noise-generator': 'mdi-weather-windy'
   }
   return icons[pluginType] || 'mdi-music-note'
 }
