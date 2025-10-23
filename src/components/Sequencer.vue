@@ -58,12 +58,12 @@
                 <div
                   v-for="track in tracks"
                   :key="track.id"
-                  class="d-flex align-center gap-1 mb-1"
+                  class="d-flex align-center gap-2 mb-1"
                 >
                   <v-btn
                     v-for="(step, index) in track.steps"
                     :key="index"
-                    :variant="step ? 'flat' : 'outlined'"
+                    :variant="step ? 'flat' : 'tonal'"
                     :color="getStepColor(step, index)"
                     :class="{ 'step-playing': currentStep === index, 'mr-1': true }"
                     size="small"
@@ -73,8 +73,7 @@
                     @click="toggleStep(track, index)"
                     :title="`Step ${index + 1}`"
                   >
-                    <v-icon v-if="step" size="small">mdi-circle</v-icon>
-                    <span v-else>{{ index + 1 }}</span>
+                    <div>{{ index + 1}}</div>
                   </v-btn>
                 </div>
               </div>
@@ -141,6 +140,7 @@ import { useDaw } from '@/composables/useDaw'
 import { useDialogStore } from '@/stores/dialog'
 import Track from './Track.vue'
 import Knob from './Knob.vue'
+import { tr } from 'vuetify/locale'
 
 const dawStore = useDaw()
 const { tracks, masterVolume, metronomeEnabled, currentStep } = storeToRefs(dawStore)
@@ -155,7 +155,7 @@ const openTrackDialog = (track) => {
 const getStepColor = (step, index) => {
   // Highlight groups of 4 steps using only two grey shades (alternating every 4)
   const group = Math.floor(index / 4) % 2
-  const shades = ['grey-darken-1', 'grey-darken-3']
+  const shades = ['grey-lighten-4', 'grey-darken-1']
   const baseColor = shades[group]
 
   // Steps that are 'on' use the primary color. Empty steps use alternating greys.
