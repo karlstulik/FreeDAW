@@ -5,9 +5,132 @@ import { acquireNode, releaseNode } from '@/stores/audio'
 export class BassGeneratorPlugin extends TrackPlugin {
   static name = 'Bass Generator';
 
-  constructor(track) {
+  static presets = {
+    'Deep Sub': {
+      frequency: 32.7, // C1 - very deep sub bass
+      waveform: 'sine',
+      duration: 0.6,
+      level: 0.8,
+      attack: 0.02,
+      decay: 0.2,
+      sustain: 0.8,
+      release: 0.3,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.6,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 20,
+      lpFreq: 120,
+      resonance: 1.0,
+      saturation: 0.05,
+      compThreshold: -20
+    },
+    'Punchy Bass': {
+      frequency: 55, // A1 - punchy kick-bass range
+      waveform: 'sawtooth',
+      duration: 0.3,
+      level: 0.75,
+      attack: 0.005,
+      decay: 0.1,
+      sustain: 0.6,
+      release: 0.2,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.3,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 30,
+      lpFreq: 800,
+      resonance: 1.5,
+      saturation: 0.1,
+      compThreshold: -16
+    },
+    'Warm Synth': {
+      frequency: 82.41, // E2 - warm mid-range bass
+      waveform: 'triangle',
+      duration: 0.4,
+      level: 0.7,
+      attack: 0.01,
+      decay: 0.15,
+      sustain: 0.7,
+      release: 0.25,
+      detune: 0,
+      subOsc: false,
+      subLevel: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 50,
+      lpFreq: 2000,
+      resonance: 1.2,
+      saturation: 0.08,
+      compThreshold: -18
+    },
+    'Fuzz Bass': {
+      frequency: 65.41, // C2
+      waveform: 'sawtooth',
+      duration: 0.35,
+      level: 0.65,
+      attack: 0.008,
+      decay: 0.12,
+      sustain: 0.5,
+      release: 0.2,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.4,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 60,
+      lpFreq: 1500,
+      resonance: 2.0,
+      saturation: 0.25,
+      compThreshold: -14
+    },
+    '808 Style': {
+      frequency: 36.71, // C#1 - classic 808 bass
+      waveform: 'sine',
+      duration: 0.5,
+      level: 0.85,
+      attack: 0.001,
+      decay: 0.3,
+      sustain: 0.9,
+      release: 0.4,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.7,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 25,
+      lpFreq: 200,
+      resonance: 1.0,
+      saturation: 0.03,
+      compThreshold: -22
+    },
+    'Acid Bass': {
+      frequency: 73.42, // D2 - squelchy acid bass
+      waveform: 'sawtooth',
+      duration: 0.25,
+      level: 0.6,
+      attack: 0.002,
+      decay: 0.08,
+      sustain: 0.4,
+      release: 0.15,
+      detune: 0,
+      subOsc: false,
+      subLevel: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 100,
+      lpFreq: 3000,
+      resonance: 3.0,
+      saturation: 0.2,
+      compThreshold: -12
+    }
+  };
+
+  constructor(track, presetName = null) {
     super(track);
-    this.state = reactive({
+    const defaultState = {
       frequency: 65.41, // C2 - deep bass that locks with kick
       waveform: 'sawtooth', // Rich harmonics for presence
       duration: 0.4, // Sustained bass note
@@ -27,7 +150,14 @@ export class BassGeneratorPlugin extends TrackPlugin {
       resonance: 1.2, // Slight resonance for character
       saturation: 0.15, // Warmth and harmonic content
       compThreshold: -16
-    });
+    };
+
+    // Load preset if specified, otherwise use defaults
+    const presetState = presetName && this.constructor.presets[presetName] 
+      ? this.constructor.presets[presetName] 
+      : defaultState;
+
+    this.state = reactive({ ...presetState });
   }
 
   getName() {

@@ -5,9 +5,114 @@ import { acquireNode, releaseNode } from '@/stores/audio'
 export class ToneGeneratorPlugin extends TrackPlugin {
   static name = 'Tone Generator';
 
-  constructor(track) {
+  static presets = {
+    'Pluck': {
+      frequency: 523.25, // C5
+      waveform: 'triangle',
+      duration: 0.12,
+      level: 0.75,
+      attack: 0.002,
+      decay: 0.06,
+      sustain: 0.3,
+      release: 0.08,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 100,
+      lpFreq: 6000,
+      saturation: 0.05,
+      compThreshold: -16
+    },
+    'Bell': {
+      frequency: 783.99, // G5
+      waveform: 'sine',
+      duration: 0.8,
+      level: 0.7,
+      attack: 0.001,
+      decay: 0.4,
+      sustain: 0.2,
+      release: 0.6,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 200,
+      lpFreq: 8000,
+      saturation: 0.02,
+      compThreshold: -20
+    },
+    'Pad': {
+      frequency: 440, // A4
+      waveform: 'triangle',
+      duration: 1.0,
+      level: 0.6,
+      attack: 0.1,
+      decay: 0.3,
+      sustain: 0.8,
+      release: 0.5,
+      detune: 0,
+      vibratoRate: 0.5,
+      vibratoDepth: 0.1,
+      hpFreq: 150,
+      lpFreq: 4000,
+      saturation: 0.08,
+      compThreshold: -18
+    },
+    'Lead': {
+      frequency: 659.25, // E5
+      waveform: 'sawtooth',
+      duration: 0.3,
+      level: 0.65,
+      attack: 0.01,
+      decay: 0.1,
+      sustain: 0.7,
+      release: 0.2,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 120,
+      lpFreq: 5000,
+      saturation: 0.1,
+      compThreshold: -14
+    },
+    'Square Wave': {
+      frequency: 293.66, // D4
+      waveform: 'square',
+      duration: 0.25,
+      level: 0.6,
+      attack: 0.005,
+      decay: 0.08,
+      sustain: 0.6,
+      release: 0.15,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 80,
+      lpFreq: 3000,
+      saturation: 0.12,
+      compThreshold: -16
+    },
+    'Saw Wave': {
+      frequency: 349.23, // F4
+      waveform: 'sawtooth',
+      duration: 0.2,
+      level: 0.65,
+      attack: 0.008,
+      decay: 0.05,
+      sustain: 0.5,
+      release: 0.12,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 90,
+      lpFreq: 4000,
+      saturation: 0.15,
+      compThreshold: -12
+    }
+  };
+
+  constructor(track, presetName = null) {
     super(track);
-    this.state = reactive({
+    const defaultState = {
       frequency: 523.25, // C5 - bright, musical tone that cuts through mix
       waveform: 'triangle', // Warmer than sine, cleaner than square
       duration: 0.15, // Slightly longer for melodic presence
@@ -24,7 +129,14 @@ export class ToneGeneratorPlugin extends TrackPlugin {
       lpFreq: 8000, // Remove harsh highs
       saturation: 0.08, // Subtle harmonic richness
       compThreshold: -18
-    });
+    };
+
+    // Load preset if specified, otherwise use defaults
+    const presetState = presetName && this.constructor.presets[presetName] 
+      ? this.constructor.presets[presetName] 
+      : defaultState;
+
+    this.state = reactive({ ...presetState });
   }
 
   getName() {

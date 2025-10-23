@@ -1,6 +1,35 @@
 ...existing code...
 <template>
   <v-container fluid class="pa-0">
+    <!-- Preset Selector -->
+    <v-row dense class="mb-3">
+      <v-col cols="12">
+        <v-card flat color="rgba(255, 255, 255, 0.02)">
+          <v-card-text class="pa-2">
+            <v-select
+              ref="presetSelect"
+              v-model="selectedPreset"
+              label="Preset"
+              :items="presetOptions"
+              density="compact"
+              variant="outlined"
+              @update:model-value="loadPreset"
+              class="mb-1"
+            >
+              <template #item="{ item, index }">
+                <v-list-item @click="selectPreset(item.value)">
+                  <v-list-item-title>{{ item.title }}</v-list-item-title>
+                  <template #append>
+                    <v-btn icon="mdi-play" size="small" @click.stop="auditionPreset(item.value)" density="compact"></v-btn>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <v-row>
       <!-- Main Oscillator Section -->
       <v-col cols="6">
@@ -160,13 +189,63 @@
 </template>
 
 <script setup>
+import { ref, computed, watch, nextTick } from 'vue'
 import Knob from '../Knob.vue'
 import AdsrEnvelope from '../AdsrEnvelope.vue'
+import { ToneGeneratorPlugin } from '@/plugins/ToneGeneratorPlugin.js'
 
-defineProps({
+const props = defineProps({
   plugin: {
     type: Object,
     required: true
   }
 })
+
+const presetSelect = ref(null)
+const selectedPreset = ref('')
+const isLoadingPreset = ref(false)
+
+const presetOptions = computed(() => {
+  return Object.keys(ToneGeneratorPlugin.presets).map(name => ({
+    title: name,
+    value: name
+  }))
+})
+
+const loadPreset = async (presetName) => {
+  if (presetName && ToneGeneratorPlugin.presets[presetName]) {
+    isLoadingPreset.value = true
+    const preset = ToneGeneratorPlugin.presets[presetName]
+    Object.assign(props.plugin.state, preset)
+    selectedPreset.value = presetName
+    await nextTick()
+    isLoadingPreset.value = false
+  }
+}
+
+const auditionPreset = (presetName) => {
+  if (presetName && ToneGeneratorPlugin.presets[presetName]) {
+    // Create a temporary plugin instance with the preset
+    const tempPlugin = new ToneGeneratorPlugin(props.plugin.track, presetName)
+    // Play a short sample
+    tempPlugin.play(props.plugin.audioCtx.currentTime, 0.5)
+  }
+}
+
+const selectPreset = (presetName) => {
+  selectedPreset.value = presetName
+  loadPreset(presetName)
+  // Close the dropdown after selection
+  if (presetSelect.value) {
+    presetSelect.value.menu = false
+  }
+}
+
+// Watch for changes to detect when a preset is loaded externally or parameters are manually adjusted
+watch(() => props.plugin.state, () => {
+  // Only reset selected preset if we're not currently loading a preset
+  if (!isLoadingPreset.value) {
+    selectedPreset.value = ''
+  }
+}, { deep: true })
 </script>

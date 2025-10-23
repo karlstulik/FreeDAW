@@ -5,9 +5,108 @@ import { acquireNode, releaseNode } from '@/stores/audio'
 export class ClapGeneratorPlugin extends TrackPlugin {
   static name = 'Clap Generator';
 
-  constructor(track) {
+  static presets = {
+    'Tight Clap': {
+      level: 0.8,
+      attack: 0.001,
+      decay: 0.06,
+      sustain: 0.0,
+      release: 0.04,
+      noiseType: 'white',
+      hpFreq: 300,
+      lpFreq: 6000,
+      resonance: 1.5,
+      layers: 2,
+      layerSpread: 0.003,
+      layerLevel: 0.8,
+      saturation: 0.06,
+      compThreshold: -16
+    },
+    'Loose Clap': {
+      level: 0.75,
+      attack: 0.001,
+      decay: 0.1,
+      sustain: 0.0,
+      release: 0.06,
+      noiseType: 'white',
+      hpFreq: 150,
+      lpFreq: 5000,
+      resonance: 1.2,
+      layers: 3,
+      layerSpread: 0.008,
+      layerLevel: 0.6,
+      saturation: 0.08,
+      compThreshold: -18
+    },
+    'Layered Clap': {
+      level: 0.82,
+      attack: 0.001,
+      decay: 0.08,
+      sustain: 0.0,
+      release: 0.05,
+      noiseType: 'white',
+      hpFreq: 200,
+      lpFreq: 8000,
+      resonance: 2.0,
+      layers: 4,
+      layerSpread: 0.005,
+      layerLevel: 0.7,
+      saturation: 0.1,
+      compThreshold: -18
+    },
+    'Snappy Clap': {
+      level: 0.78,
+      attack: 0.0005,
+      decay: 0.04,
+      sustain: 0.0,
+      release: 0.03,
+      noiseType: 'white',
+      hpFreq: 400,
+      lpFreq: 7000,
+      resonance: 2.5,
+      layers: 2,
+      layerSpread: 0.002,
+      layerLevel: 0.9,
+      saturation: 0.05,
+      compThreshold: -14
+    },
+    'Sharp Clap': {
+      level: 0.8,
+      attack: 0.0008,
+      decay: 0.05,
+      sustain: 0.0,
+      release: 0.035,
+      noiseType: 'pink',
+      hpFreq: 250,
+      lpFreq: 6500,
+      resonance: 1.8,
+      layers: 1,
+      layerSpread: 0,
+      layerLevel: 1.0,
+      saturation: 0.07,
+      compThreshold: -16
+    },
+    'Boom Clap': {
+      level: 0.85,
+      attack: 0.002,
+      decay: 0.12,
+      sustain: 0.0,
+      release: 0.08,
+      noiseType: 'brown',
+      hpFreq: 100,
+      lpFreq: 4000,
+      resonance: 1.0,
+      layers: 3,
+      layerSpread: 0.01,
+      layerLevel: 0.5,
+      saturation: 0.12,
+      compThreshold: -20
+    }
+  };
+
+  constructor(track, presetName = null) {
     super(track);
-    this.state = reactive({
+    const defaultState = {
       level: 0.8, // Balanced level for clap in mix
       // ADSR envelope - tuned for sharp attack and fast decay
       attack: 0.001, // Very fast attack for snap
@@ -28,7 +127,14 @@ export class ClapGeneratorPlugin extends TrackPlugin {
       saturation: 0.08,
       // compressor settings
       compThreshold: -18
-    });
+    };
+
+    // Load preset if specified, otherwise use defaults
+    const presetState = presetName && this.constructor.presets[presetName] 
+      ? this.constructor.presets[presetName] 
+      : defaultState;
+
+    this.state = reactive({ ...presetState });
   }
 
   getName() {

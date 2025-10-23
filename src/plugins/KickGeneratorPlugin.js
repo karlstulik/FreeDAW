@@ -5,9 +5,90 @@ import { acquireNode, releaseNode } from '@/stores/audio'
 export class KickGeneratorPlugin extends TrackPlugin {
   static name = 'Kick Generator';
 
-  constructor(track) {
+  static presets = {
+    'Deep Kick': {
+      frequency: 45, // Low fundamental for deep kick
+      pitchOffset: 0,
+      level: 0.9,
+      attack: 0.001,
+      decay: 0.4,
+      sustain: 0.0,
+      release: 0.1,
+      clickLevel: 0.01,
+      hpFreq: 20,
+      saturation: 0.05,
+      compThreshold: -24
+    },
+    'Punchy Kick': {
+      frequency: 55, // A1 - punchy kick
+      pitchOffset: 0,
+      level: 0.85,
+      attack: 0.002,
+      decay: 0.35,
+      sustain: 0.0,
+      release: 0.08,
+      clickLevel: 0.015,
+      hpFreq: 25,
+      saturation: 0.12,
+      compThreshold: -20
+    },
+    'Snappy Kick': {
+      frequency: 60, // Higher pitch for snappy attack
+      pitchOffset: 0,
+      level: 0.8,
+      attack: 0.001,
+      decay: 0.25,
+      sustain: 0.0,
+      release: 0.06,
+      clickLevel: 0.025,
+      hpFreq: 30,
+      saturation: 0.08,
+      compThreshold: -18
+    },
+    'Boom Kick': {
+      frequency: 40, // Very low for boomy sound
+      pitchOffset: 0,
+      level: 0.95,
+      attack: 0.003,
+      decay: 0.5,
+      sustain: 0.0,
+      release: 0.12,
+      clickLevel: 0.005,
+      hpFreq: 18,
+      saturation: 0.03,
+      compThreshold: -26
+    },
+    'Tight Kick': {
+      frequency: 50, // Balanced frequency
+      pitchOffset: 0,
+      level: 0.82,
+      attack: 0.0015,
+      decay: 0.2,
+      sustain: 0.0,
+      release: 0.05,
+      clickLevel: 0.02,
+      hpFreq: 28,
+      saturation: 0.1,
+      compThreshold: -16
+    },
+    '808 Kick': {
+      frequency: 35, // Classic 808 frequency
+      pitchOffset: 0,
+      level: 0.88,
+      attack: 0.001,
+      decay: 0.45,
+      sustain: 0.0,
+      release: 0.09,
+      clickLevel: 0.008,
+      hpFreq: 22,
+      saturation: 0.04,
+      compThreshold: -22
+    }
+  };
+
+  constructor(track, presetName = null) {
     super(track);
-    this.state = reactive({
+    const defaultState = {
       frequency: 55, // Deep, punchy kick frequency (A1)
       pitchOffset: 0, // semitones offset
       level: 0.85, // Optimized level to prevent clipping in mix
@@ -24,7 +105,14 @@ export class KickGeneratorPlugin extends TrackPlugin {
       saturation: 0.12,
       // compressor settings (threshold in dB)
       compThreshold: -20
-    });
+    };
+
+    // Load preset if specified, otherwise use defaults
+    const presetState = presetName && this.constructor.presets[presetName] 
+      ? this.constructor.presets[presetName] 
+      : defaultState;
+
+    this.state = reactive({ ...presetState });
   }
 
   getName() {
