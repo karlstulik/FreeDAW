@@ -47,16 +47,37 @@
     <v-card>
       <v-card-title>Add New Track</v-card-title>
       <v-card-text>
-        <v-select
-          v-model="newTrackPluginType"
-          :items="Object.entries(pluginTypes).map(([key, plugin]) => ({ title: plugin.name, value: key }))"
-          label="Plugin Type"
-        ></v-select>
+        <div class="d-flex flex-column gap-3">
+          <div
+            v-for="(plugin, key) in pluginTypes"
+            :key="key"
+            class="d-flex align-center gap-2"
+          >
+            <v-btn
+              variant="outlined"
+              color="primary"
+              @click="selectPluginType(key)"
+              class="flex-grow-1 justify-start"
+            >
+              <v-icon class="me-2">{{ getPluginIcon(key) }}</v-icon>
+              {{ plugin.name }}
+            </v-btn>
+            <v-btn
+              v-if="key !== 'file-loader'"
+              icon="mdi-play"
+              size="small"
+              variant="flat"
+              color="secondary"
+              @click="previewPlugin(key)"
+              :disabled="isPreviewing"
+              title="Preview sound"
+            ></v-btn>
+          </div>
+        </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn @click="addTrackDialog = false">Cancel</v-btn>
-        <v-btn color="primary" @click="createNewTrack">Create</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -66,10 +87,11 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
+import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin } from '@/plugins/dawPlugins'
 
 const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
-const { togglePlay, stop, exportMixdown, createTrack } = dawStore
+const { togglePlay, stop, exportMixdown, createTrack, getAudioContext } = dawStore
 const pluginTypes = dawStore.pluginTypes
 
 const handlePlay = async () => {
@@ -81,10 +103,65 @@ const handlePlay = async () => {
 }
 
 const addTrackDialog = ref(false)
-const newTrackPluginType = ref('file-loader')
+const isPreviewing = ref(false)
 
-const createNewTrack = () => {
-  createTrack('Track ' + (tracks.value.length + 1), newTrackPluginType.value)
+const selectPluginType = (pluginType) => {
+  createTrack(undefined, pluginType)
   addTrackDialog.value = false
+}
+
+const previewPlugin = async (pluginType) => {
+  if (isPreviewing.value) return
+
+  try {
+    isPreviewing.value = true
+
+    // Get audio context
+    const audioCtx = getAudioContext()
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume()
+    }
+
+    // Create a temporary track-like object
+    const tempTrack = {
+      audioCtx,
+      ensureAudioNodes() {
+        if (!this.gainNode) {
+          this.gainNode = audioCtx.createGain()
+          this.gainNode.gain.value = 0.3 // Lower volume for preview
+          this.panNode = audioCtx.createStereoPanner()
+          this.panNode.pan.value = 0
+          this.gainNode.connect(this.panNode)
+          this.panNode.connect(audioCtx.destination)
+        }
+      }
+    }
+
+    // Create plugin instance
+    let plugin
+    const PluginClass = pluginTypes[pluginType]
+    plugin = new PluginClass(tempTrack)
+
+    // Play preview
+    const now = audioCtx.currentTime + 0.1 // Small delay
+    plugin.play(now, 0.5) // Play for 0.5 seconds
+
+  } catch (error) {
+    console.error('Error playing preview:', error)
+  } finally {
+    // Re-enable after a short delay
+    setTimeout(() => {
+      isPreviewing.value = false
+    }, 600)
+  }
+}
+
+const getPluginIcon = (pluginType) => {
+  const icons = {
+    'file-loader': 'mdi-file-music',
+    'tone-generator': 'mdi-waveform',
+    'kick-generator': 'mdi-drum'
+  }
+  return icons[pluginType] || 'mdi-music-note'
 }
 </script>

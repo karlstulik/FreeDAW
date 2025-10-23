@@ -91,9 +91,7 @@ export class KickGeneratorPlugin extends TrackPlugin {
   constructor(track) {
     super(track);
     this.state = reactive({
-      frequency: 60, // Starting frequency for kick
-      decay: 0.3, // Decay time in seconds
-      pitchBend: 0.1 // How much the pitch changes
+      frequency: 60 // Starting frequency for kick
     });
   }
 
@@ -108,21 +106,9 @@ export class KickGeneratorPlugin extends TrackPlugin {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(this.state.frequency, when);
 
-    // Create pitch bend effect
-    if (this.state.pitchBend > 0) {
-      const endFreq = this.state.frequency * (1 - this.state.pitchBend);
-      osc.frequency.exponentialRampToValueAtTime(endFreq, when + this.state.decay);
-    }
+    osc.connect(this.track.gainNode);
 
-    // Create gain envelope for decay
-    const gainNode = this.audioCtx.createGain();
-    gainNode.gain.setValueAtTime(1, when);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, when + this.state.decay);
-
-    osc.connect(gainNode);
-    gainNode.connect(this.track.gainNode);
-
-    const playDuration = duration || this.state.decay;
+    const playDuration = duration || 0.1;
     osc.start(when);
     osc.stop(when + playDuration);
   }
@@ -132,19 +118,9 @@ export class KickGeneratorPlugin extends TrackPlugin {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(this.state.frequency, when);
 
-    if (this.state.pitchBend > 0) {
-      const endFreq = this.state.frequency * (1 - this.state.pitchBend);
-      osc.frequency.exponentialRampToValueAtTime(endFreq, when + this.state.decay);
-    }
+    osc.connect(offlineCtx.destination);
 
-    const gainNode = offlineCtx.createGain();
-    gainNode.gain.setValueAtTime(1, when);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, when + this.state.decay);
-
-    osc.connect(gainNode);
-    gainNode.connect(offlineCtx.destination);
-
-    const playDuration = duration || this.state.decay;
+    const playDuration = duration || 0.1;
     osc.start(when);
     osc.stop(when + playDuration);
   }

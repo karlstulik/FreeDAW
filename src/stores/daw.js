@@ -46,7 +46,7 @@ export const useDawStore = defineStore('daw', () => {
 
     const track = reactive({
       id,
-      name: name || ('Track ' + (tracks.length + 1)),
+      name: '', // Will be set after
       plugin: null, // Will be set after creation
       pluginType,
       steps: [],
@@ -73,6 +73,7 @@ export const useDawStore = defineStore('daw', () => {
 
     const PluginClass = pluginTypes[pluginType];
     track.plugin = new PluginClass(track);
+    track.name = name || (PluginClass.name + ' ' + (tracks.filter(t => t.pluginType === pluginType).length + 1));
 
     const stepsCountVal = parseInt(stepsCount.value, 10) || 16;
     for (let i = 0; i < stepsCountVal; i++) track.steps.push(false);
@@ -95,18 +96,14 @@ export const useDawStore = defineStore('daw', () => {
   }
 
   async function deleteTrack(track) {
-    const dialog = useDialogStore()
-    const confirmed = await dialog.showConfirm('Delete track "' + track.name + '"?', 'Delete Track')
-    if (confirmed) {
-      // Destroy plugin
-      if (track.plugin && track.plugin.destroy) {
-        track.plugin.destroy();
-      }
-      // Remove from tracks array
-      const index = tracks.indexOf(track);
-      if (index > -1) {
-        tracks.splice(index, 1);
-      }
+    // Destroy plugin
+    if (track.plugin && track.plugin.destroy) {
+      track.plugin.destroy();
+    }
+    // Remove from tracks array
+    const index = tracks.indexOf(track);
+    if (index > -1) {
+      tracks.splice(index, 1);
     }
   }
 
@@ -312,6 +309,7 @@ export const useDawStore = defineStore('daw', () => {
     updateVolume,
     updatePan,
     toggleStep,
-    createTrack
+    createTrack,
+    getAudioContext
   }
 })

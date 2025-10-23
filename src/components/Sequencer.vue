@@ -17,18 +17,38 @@
               v-for="track in tracks"
               :key="track.id"
               height="38"
-              class="d-flex align-center mb-1"
+              class="d-flex align-center justify-space-between mb-1"
               color="transparent"
             >
               <v-chip
                 variant="outlined"
-                size="small"
+                size="large"
                 :color="track.color || 'primary'"
-                class="font-weight-medium ms-4"
+                class="font-weight-medium"
+                style="cursor: pointer;"
+                @click="openTrackDialog(track)"
               >
                 <v-icon size="small" class="me-1">{{ track.icon || 'mdi-music-note' }}</v-icon>
-                  {{ track.name }}
-                </v-chip>
+                {{ track.name }}
+              </v-chip>
+              <div class="d-flex">
+                <v-btn
+                  icon="mdi-volume-off"
+                  density="compact"
+                  @click="track.muted = !track.muted"
+                  :color="track.muted ? 'error' : 'grey'"
+                  :title="track.muted ? 'Unmute' : 'Mute'"
+                  class="ms-2"
+                ></v-btn>
+                <v-btn
+                  icon="mdi-numeric-1-circle"
+                  density="compact"
+                  @click="track.solo = !track.solo"
+                  :color="track.solo ? 'warning' : 'grey'"
+                  :title="track.solo ? 'Unsolo' : 'Solo'"
+                  class="ms-1"
+                ></v-btn>
+              </div>
             </v-sheet>
           </v-col>
           <!-- Scrollable steps column -->
@@ -119,12 +139,20 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
+import { useDialogStore } from '@/stores/dialog'
+import Track from './Track.vue'
 
 const dawStore = useDaw()
 const { tracks, masterVolume, metronomeEnabled } = storeToRefs(dawStore)
 const { toggleStep } = dawStore
 
+const dialogStore = useDialogStore()
+
 const masterVolumeDisplay = computed(() => {
   return Math.round(masterVolume.value * 100) + '%'
 })
+
+const openTrackDialog = (track) => {
+  dialogStore.showCustom(Track, { track }, track.name)
+}
 </script>

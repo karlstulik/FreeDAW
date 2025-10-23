@@ -6,10 +6,6 @@
       <Transport />
     </v-app-bar>
 
-    <v-navigation-drawer v-model="drawer" app width="320" color="surface">
-      <TrackList />
-    </v-navigation-drawer>
-
     <v-main>
       <v-container fluid>
         <Sequencer />
@@ -23,13 +19,11 @@
 <script setup>
 import { ref } from 'vue'
 import Transport from './components/Transport.vue'
-import TrackList from './components/TrackList.vue'
 import Sequencer from './components/Sequencer.vue'
 import Dialog from './components/Dialog.vue'
 import { useDaw } from '@/composables/useDaw'
 
 const { createTrack } = useDaw()
-const drawer = ref(true)
 
 const onDrop = async (e) => {
   e.preventDefault();
