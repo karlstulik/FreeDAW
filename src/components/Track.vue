@@ -226,6 +226,186 @@
                                 @update:model-value="updateEffect(t, index)"
                               />
                             </v-col>
+                            <v-col cols="3" v-if="effect.type === 'delay'">
+                              <Knob
+                                v-model="effect.time"
+                                label="Time"
+                                :min="0.01"
+                                :max="2"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'delay'">
+                              <Knob
+                                v-model="effect.feedback"
+                                label="Feedback"
+                                :min="0"
+                                :max="0.6"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'delay'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'delay'">
+                              <Knob
+                                v-model="effect.damping"
+                                label="Damping"
+                                :min="500"
+                                :max="8000"
+                                :step="100"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'distortion'">
+                              <Knob
+                                v-model="effect.amount"
+                                label="Amount"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'distortion'">
+                              <Knob
+                                v-model="effect.drive"
+                                label="Drive"
+                                :min="1"
+                                :max="10"
+                                :step="0.1"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'distortion'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'chorus'">
+                              <Knob
+                                v-model="effect.rate"
+                                label="Rate"
+                                :min="0.1"
+                                :max="5"
+                                :step="0.1"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'chorus'">
+                              <Knob
+                                v-model="effect.depth"
+                                label="Depth"
+                                :min="0.001"
+                                :max="0.01"
+                                :step="0.001"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'chorus'">
+                              <Knob
+                                v-model="effect.delay"
+                                label="Delay"
+                                :min="0.005"
+                                :max="0.03"
+                                :step="0.001"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'chorus'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'phaser'">
+                              <Knob
+                                v-model="effect.rate"
+                                label="Rate"
+                                :min="0.1"
+                                :max="5"
+                                :step="0.1"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'phaser'">
+                              <Knob
+                                v-model="effect.depth"
+                                label="Depth"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'phaser'">
+                              <Knob
+                                v-model="effect.frequency"
+                                label="Freq"
+                                :min="200"
+                                :max="5000"
+                                :step="100"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'phaser'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'eq'">
+                              <Knob
+                                v-model="effect.lowGain"
+                                label="Low"
+                                :min="-20"
+                                :max="20"
+                                :step="0.5"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'eq'">
+                              <Knob
+                                v-model="effect.midGain"
+                                label="Mid"
+                                :min="-20"
+                                :max="20"
+                                :step="0.5"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="4" v-if="effect.type === 'eq'">
+                              <Knob
+                                v-model="effect.highGain"
+                                label="High"
+                                :min="-20"
+                                :max="20"
+                                :step="0.5"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
                             <!-- Add more effect types here -->
                           </v-row>
                         </v-card-text>
@@ -312,7 +492,12 @@ const getPluginComponent = (pluginType) => {
 const availableEffects = [
   { type: 'gain', name: 'Gain' },
   { type: 'flanger', name: 'Flanger' },
-  { type: 'reverb', name: 'Reverb' }
+  { type: 'reverb', name: 'Reverb' },
+  { type: 'delay', name: 'Delay' },
+  { type: 'distortion', name: 'Distortion' },
+  { type: 'chorus', name: 'Chorus' },
+  { type: 'phaser', name: 'Phaser' },
+  { type: 'eq', name: 'EQ' }
 ]
 
 const showConfirmDialog = ref(false)
@@ -367,6 +552,44 @@ const addEffect = (track, effectType) => {
       preDelay: 0.02, // Pre-delay time in seconds (increased from 0.01)
       damping: 3000 // High-frequency damping in Hz
     };
+  } else if (effectType === 'delay') {
+    effect = {
+      type: 'delay',
+      time: 0.2, // Delay time in seconds (reduced from 0.3)
+      feedback: 0.15, // Feedback amount (reduced from 0.3)
+      mix: 0.3, // Dry/wet mix
+      damping: 5000 // High-frequency damping in Hz
+    };
+  } else if (effectType === 'distortion') {
+    effect = {
+      type: 'distortion',
+      amount: 0.5, // Distortion amount
+      drive: 2, // Input drive
+      mix: 0.5 // Dry/wet mix
+    };
+  } else if (effectType === 'chorus') {
+    effect = {
+      type: 'chorus',
+      rate: 0.3, // LFO rate in Hz
+      depth: 0.005, // Modulation depth
+      delay: 0.01, // Base delay time in seconds
+      mix: 0.5 // Dry/wet mix
+    };
+  } else if (effectType === 'phaser') {
+    effect = {
+      type: 'phaser',
+      rate: 0.5, // LFO rate in Hz
+      depth: 0.5, // Modulation depth
+      frequency: 1000, // Base frequency in Hz
+      mix: 0.5 // Dry/wet mix
+    };
+  } else if (effectType === 'eq') {
+    effect = {
+      type: 'eq',
+      lowGain: 0, // Low gain in dB
+      midGain: 0, // Mid gain in dB
+      highGain: 0 // High gain in dB
+    };
   }
   track.effects.push(effect);
   track.ensureAudioNodes();
@@ -411,6 +634,64 @@ const removeEffect = (track, index) => {
       if (effect.filters) {
         effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
       }
+    }
+    // Release delay nodes
+    if (effect.type === 'delay') {
+      if (effect.delayNode) releaseNode('delay', effect.delayNode);
+      if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+      if (effect.filterNode) releaseNode('biquadFilter', effect.filterNode);
+    }
+    // Release distortion nodes
+    if (effect.type === 'distortion') {
+      if (effect.waveShaper) releaseNode('waveShaper', effect.waveShaper);
+      if (effect.inputGain) releaseNode('gain', effect.inputGain);
+      if (effect.outputGain) releaseNode('gain', effect.outputGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    }
+    // Release chorus nodes
+    if (effect.type === 'chorus') {
+      if (effect.delays) {
+        effect.delays.forEach(delay => releaseNode('delay', delay));
+      }
+      if (effect.delayGains) {
+        effect.delayGains.forEach(gain => releaseNode('gain', gain));
+      }
+      if (effect.lfoOscs) {
+        effect.lfoOscs.forEach(osc => osc.stop()); // Can't release oscillators
+      }
+      if (effect.lfoGains) {
+        effect.lfoGains.forEach(gain => releaseNode('gain', gain));
+      }
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    }
+    // Release phaser nodes
+    if (effect.type === 'phaser') {
+      if (effect.filters) {
+        effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
+      }
+      if (effect.phaseDelays) {
+        effect.phaseDelays.forEach(delay => releaseNode('delay', delay));
+      }
+      if (effect.lfoOsc) {
+        effect.lfoOsc.stop(); // Can't release oscillators
+      }
+      if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    }
+    // Release EQ nodes
+    if (effect.type === 'eq') {
+      if (effect.lowFilter) releaseNode('biquadFilter', effect.lowFilter);
+      if (effect.midFilter) releaseNode('biquadFilter', effect.midFilter);
+      if (effect.highFilter) releaseNode('biquadFilter', effect.highFilter);
     }
     track.effects.splice(index, 1);
     track.ensureAudioNodes();
