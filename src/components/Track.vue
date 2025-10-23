@@ -173,6 +173,8 @@ const confirmDelete = (track) => {
 
 const executeDelete = () => {
   if (trackToDelete.value) {
+    const dialog = useDialogStore()
+    dialog.close()
     deleteTrack(trackToDelete.value)
     trackToDelete.value = null
     showConfirmDialog.value = false
