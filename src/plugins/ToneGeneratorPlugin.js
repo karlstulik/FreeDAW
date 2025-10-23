@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { TrackPlugin } from './TrackPlugin.js'
 import { acquireNode, releaseNode } from '@/stores/audio'
+import { clamp, getSaturationCurve } from '@/utils/audioDSP'
 
 export class ToneGeneratorPlugin extends TrackPlugin {
   static name = 'Tone Generator';
@@ -240,20 +241,19 @@ export class ToneGeneratorPlugin extends TrackPlugin {
       env.gain.linearRampToValueAtTime(0.0001, when + playDur);
     }
 
-    // vibrato LFO (applies small frequency modulation)
+    // vibrato LFO (applies small pitch modulation via detune for cleaner result)
     let vibratoOsc = null;
     let vibratoGain = null;
-    if (this.state.vibratoRate > 0 && this.state.vibratoDepth > 0) {
+    const vibratoRate = clamp(this.state.vibratoRate ?? 0, 0, 20);
+    const vibratoDepth = clamp(this.state.vibratoDepth ?? 0, 0, 2);
+    if (vibratoRate > 0 && vibratoDepth > 0) {
       vibratoOsc = acquireNode('oscillator');
       vibratoOsc.type = 'sine';
-      vibratoOsc.frequency.setValueAtTime(this.state.vibratoRate, when);
+      vibratoOsc.frequency.setValueAtTime(vibratoRate, when);
       vibratoGain = acquireNode('gain');
-      // convert semitone depth to frequency multiplier modulation in Hz: we use small detune in cents
-      // WebAudio detune is in cents on oscillator.detune; but we'll modulate frequency directly using gain in Hz approximation
-      const depthHz = baseFreq * (Math.pow(2, this.state.vibratoDepth / 12) - 1);
-      vibratoGain.gain.setValueAtTime(depthHz, when);
+      vibratoGain.gain.setValueAtTime(vibratoDepth * 100, when); // detune is in cents
       vibratoOsc.connect(vibratoGain);
-      vibratoGain.connect(osc.frequency);
+      vibratoGain.connect(osc.detune);
       vibratoOsc.start(when);
       vibratoOsc.stop(when + playDur + 0.1);
     }
@@ -262,36 +262,31 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     let last = env;
 
     let waveShaper = null;
-    if (this.state.saturation && this.state.saturation > 0.001) {
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    if (saturation > 0.0001) {
       waveShaper = acquireNode('waveShaper');
-      const amount = Math.min(1, this.state.saturation);
-      const samples = 1024;
-      const curve = new Float32Array(samples);
-      const k = amount * 50;
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-      }
-      waveShaper.curve = curve;
+      waveShaper.curve = getSaturationCurve(saturation);
       waveShaper.oversample = '4x';
       env.connect(waveShaper);
       last = waveShaper;
     }
 
+    const nyquist = ctx.sampleRate * 0.5;
+
     const hp = acquireNode('biquadFilter');
     hp.type = 'highpass';
-    hp.frequency.value = Math.max(10, this.state.hpFreq || 10);
+    hp.frequency.value = clamp(this.state.hpFreq ?? 10, 10, Math.min(1000, nyquist));
     last.connect(hp);
     last = hp;
 
     const lp = acquireNode('biquadFilter');
     lp.type = 'lowpass';
-    lp.frequency.value = Math.max(200, this.state.lpFreq || 20000);
+    lp.frequency.value = clamp(this.state.lpFreq ?? nyquist, 200, nyquist);
     last.connect(lp);
     last = lp;
 
     const comp = acquireNode('dynamicsCompressor');
-    comp.threshold.value = this.state.compThreshold || -24;
+    comp.threshold.value = clamp(this.state.compThreshold ?? -24, -60, 0);
     comp.knee.value = 10;
     comp.ratio.value = 3;
     comp.attack.value = 0.003;
@@ -301,7 +296,8 @@ export class ToneGeneratorPlugin extends TrackPlugin {
 
     const levelGain = acquireNode('gain');
     // Apply 1.5x boost to bring tone generator to full presence
-    levelGain.gain.value = (this.state.level || 1) * 1.5;
+    const level = clamp(this.state.level ?? 1, 0, 2);
+    levelGain.gain.value = level * 1.5;
     last.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -352,30 +348,44 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     }
 
     let last = env;
-    if (this.state.saturation && this.state.saturation > 0.001) {
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    if (saturation > 0.0001) {
       const ws = ctx.createWaveShaper();
-      const amount = Math.min(1, this.state.saturation);
-      const samples = 1024;
-      const curve = new Float32Array(samples);
-      const k = amount * 50;
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-      }
-      ws.curve = curve; ws.oversample = '4x'; env.connect(ws); last = ws;
+      ws.curve = getSaturationCurve(saturation);
+      ws.oversample = '4x';
+      env.connect(ws);
+      last = ws;
     }
 
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = Math.max(10, this.state.hpFreq || 10); last.connect(hp); last = hp;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.max(200, this.state.lpFreq || 20000); last.connect(lp); last = lp;
+    const nyquist = ctx.sampleRate * 0.5;
 
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = this.state.compThreshold || -24; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.003; comp.release.value = 0.25; last.connect(comp); last = comp;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = clamp(this.state.hpFreq ?? 10, 10, Math.min(1000, nyquist)); last.connect(hp); last = hp;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = clamp(this.state.lpFreq ?? nyquist, 200, nyquist); last.connect(lp); last = lp;
 
-    const levelGain = ctx.createGain(); 
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = clamp(this.state.compThreshold ?? -24, -60, 0); comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.003; comp.release.value = 0.25; last.connect(comp); last = comp;
+
+    const levelGain = ctx.createGain();
     // Apply 1.5x boost for offline rendering
-    levelGain.gain.value = (this.state.level || 1) * 1.5; 
-    last.connect(levelGain); 
-    levelGain.connect(destination);    osc.connect(env);
+    const level = clamp(this.state.level ?? 1, 0, 2);
+    levelGain.gain.value = level * 1.5;
+    last.connect(levelGain);
+    levelGain.connect(destination);
+    osc.connect(env);
+
     const playDuration = playDur;
+    const vibratoRate = clamp(this.state.vibratoRate ?? 0, 0, 20);
+    const vibratoDepth = clamp(this.state.vibratoDepth ?? 0, 0, 2);
+    if (vibratoRate > 0 && vibratoDepth > 0) {
+      const vibratoOsc = ctx.createOscillator();
+      vibratoOsc.type = 'sine';
+      vibratoOsc.frequency.setValueAtTime(vibratoRate, when);
+      const vibratoGain = ctx.createGain();
+      vibratoGain.gain.setValueAtTime(vibratoDepth * 100, when);
+      vibratoOsc.connect(vibratoGain);
+      vibratoGain.connect(osc.detune);
+      vibratoOsc.start(when);
+      vibratoOsc.stop(when + playDuration + 0.1);
+    }
     osc.start(when);
     osc.stop(when + playDuration + 0.05);
   }

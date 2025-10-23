@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin, ClapGeneratorPlugin } from '@/plugins/dawPlugins'
 import { makeId } from './utils'
 import { getAudioContext, getMasterGain, acquireNode, releaseNode } from './audio'
+import { clamp, getSaturationCurve } from '@/utils/audioDSP'
 
 export const pluginTypes = {
   'file-loader': FileLoaderPlugin,
@@ -52,60 +53,57 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           if (!effect.node) {
             effect.node = acquireNode('gain');
           }
-          effect.node.gain.value = effect.value;
+          const gainValue = clamp(effect.value ?? 1, 0, 4);
+          effect.node.gain.value = gainValue;
           current.connect(effect.node);
           current = effect.node;
         } else if (effect.type === 'flanger') {
-          // Create flanger nodes if they don't exist
-          if (!effect.delayNode) {
-            effect.delayNode = acquireNode('delay', 0.02); // Max delay of 20ms for flanging
-            effect.feedbackGain = acquireNode('gain');
-            effect.lfoOsc = acquireNode('oscillator');
-            effect.lfoGain = acquireNode('gain');
-            effect.dryGain = acquireNode('gain');
-            effect.wetGain = acquireNode('gain');
-            effect.finalMixer = acquireNode('gain');
+            const rate = clamp(effect.rate ?? 0.5, 0.01, 8);
+          const amount = clamp(effect.amount ?? 0.5, 0, 1);
+          const drive = clamp(effect.drive ?? 1, 0.01, 8);
+          const distortionMix = clamp(effect.mix ?? 0.5, 0, 1);
 
-            // Set up LFO
-            effect.lfoOsc.type = 'sine';
-            effect.lfoOsc.frequency.value = effect.rate || 0.5;
-            effect.lfoGain.gain.value = (effect.depth || 0.5) * 0.005; // Small modulation range
-            effect.lfoOsc.connect(effect.lfoGain);
-            effect.lfoGain.connect(effect.delayNode.delayTime);
+            const depth = clamp(effect.depth ?? 0.5, 0, 1);
+            const baseDelay = clamp(effect.delay ?? 0.005, 0.0005, 0.02);
+            const feedback = clamp(effect.feedback ?? 0.3, 0, 0.85);
+            const flangerMix = clamp(effect.mix ?? 0.5, 0, 1);
 
-            // Set up delay
-            effect.delayNode.delayTime.value = effect.delay || 0.005; // Base delay time
-            effect.feedbackGain.gain.value = effect.feedback || 0.3;
+            if (!effect.delayNode) {
+              effect.delayNode = acquireNode('delay', 0.02);
+              effect.feedbackGain = acquireNode('gain');
+              effect.lfoOsc = acquireNode('oscillator');
+              effect.lfoGain = acquireNode('gain');
+              effect.feedbackGain.gain.value = feedback;
 
-            // Feedback loop
-            effect.delayNode.connect(effect.feedbackGain);
-            effect.feedbackGain.connect(effect.delayNode);
+          effect.waveShaper.curve = getSaturationCurve(amount);
+              effect.delayNode.connect(effect.feedbackGain);
+              effect.feedbackGain.connect(effect.delayNode);
+          effect.inputGain.gain.value = drive;
+          effect.outputGain.gain.value = drive > 0.01 ? 1 / drive : 1; // Normalize output
+          effect.dryGain.gain.value = 1 - flangerMix;
+          effect.wetGain.gain.value = flangerMix;
+              effect.lfoGain.gain.value = depth * 0.005;
+              effect.delayNode.delayTime.value = baseDelay;
+              effect.feedbackGain.gain.value = feedback;
+            }
 
-            // Start LFO
-            effect.lfoOsc.start();
-          } else {
-            // Update parameters
-            effect.lfoOsc.frequency.value = effect.rate || 0.5;
-            effect.lfoGain.gain.value = (effect.depth || 0.5) * 0.005;
-            effect.delayNode.delayTime.value = effect.delay || 0.005;
-            effect.feedbackGain.gain.value = effect.feedback || 0.3;
-          }
+            effect.dryGain.gain.value = 1 - distortionMix;
+            effect.wetGain.gain.value = distortionMix;
 
-          // Update mix
-          effect.dryGain.gain.value = 1 - (effect.mix || 0.5);
-          effect.wetGain.gain.value = effect.mix || 0.5;
+            current.connect(effect.dryGain);
+            current.connect(effect.delayNode);
+            effect.delayNode.connect(effect.wetGain);
+            effect.dryGain.connect(effect.finalMixer);
+            effect.wetGain.connect(effect.finalMixer);
 
-          // Connect the chain: input -> dry + (input -> delay -> wet) -> mixer
-          current.connect(effect.dryGain);
-          current.connect(effect.delayNode);
-          effect.delayNode.connect(effect.wetGain);
-          effect.dryGain.connect(effect.finalMixer);
-          effect.wetGain.connect(effect.finalMixer);
-
-          current = effect.finalMixer;
+            current = effect.finalMixer;
         } else if (effect.type === 'reverb') {
-          // Create reverb nodes if they don't exist
-          if (!effect.preDelayNode) {
+            const reverbMix = clamp(effect.mix ?? 0.25, 0, 1);
+            const preDelay = clamp(effect.preDelay ?? 0.02, 0, 0.2);
+            const dampingFreq = clamp(effect.damping ?? 3000, 500, 16000);
+            const decayTime = Math.max(0.1, effect.decay ?? 1.5);
+
+            if (!effect.preDelayNode) {
             effect.preDelayNode = acquireNode('delay', 0.2); // Max pre-delay of 200ms
             effect.inputGain = acquireNode('gain');
             effect.outputGain = acquireNode('gain');
@@ -151,30 +149,23 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
                 effect.delayGains[i].connect(effect.delays[(i + 1) % effect.delays.length]);
               }
             }
-          } else {
-            // Update parameters
-            effect.preDelayNode.delayTime.value = effect.preDelay || 0.02;
-            effect.dryGain.gain.value = 1 - (effect.mix || 0.25);
-            effect.wetGain.gain.value = effect.mix || 0.25;
-
-            // Update damping frequency
-            const dampingFreq = effect.damping || 3000;
-            effect.filters.forEach(filter => {
-              filter.frequency.value = dampingFreq;
-            });
-
-            // Update decay by adjusting delay gains based on decay time
-            const decayTime = Math.max(0.1, effect.decay || 1.5);
-            const delayTimes = [0.0297, 0.0371, 0.0419, 0.0437, 0.0483, 0.0527];
-            for (let i = 0; i < effect.delayGains.length; i++) {
-              const baseGain = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2][i];
-              // Better exponential decay: signal should decay to -60dB over decayTime
-              const decayFactor = Math.pow(0.001, (delayTimes[i] / decayTime)); // -60dB decay
-              effect.delayGains[i].gain.value = baseGain * decayFactor;
-            }
           }
 
-          // Connect the chain: input -> dry + (input -> reverb -> wet) -> mixer
+          effect.preDelayNode.delayTime.value = preDelay;
+          effect.dryGain.gain.value = 1 - reverbMix;
+          effect.wetGain.gain.value = reverbMix;
+
+          effect.filters.forEach(filter => {
+            filter.frequency.value = dampingFreq;
+          });
+
+          const delayTimes = [0.0297, 0.0371, 0.0419, 0.0437, 0.0483, 0.0527];
+          const baseGains = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+          for (let i = 0; i < effect.delayGains.length; i++) {
+            const decayFactor = Math.pow(0.001, delayTimes[i] / decayTime);
+            effect.delayGains[i].gain.value = baseGains[i] * decayFactor;
+          }
+
           current.connect(effect.dryGain);
           current.connect(effect.inputGain);
           effect.outputGain.connect(effect.wetGain);
@@ -184,6 +175,11 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           current = effect.finalMixer;
         } else if (effect.type === 'delay') {
           // Create delay nodes if they don't exist
+          const time = clamp(effect.time ?? 0.2, 0.001, 2);
+          const feedback = clamp(effect.feedback ?? 0.15, 0, 0.6);
+          const damping = clamp(effect.damping ?? 5000, 500, 16000);
+          const delayMix = clamp(effect.mix ?? 0.3, 0, 1);
+
           if (!effect.delayNode) {
             effect.delayNode = acquireNode('delay', 2.0); // Max delay of 2 seconds
             effect.feedbackGain = acquireNode('gain');
@@ -204,18 +200,14 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
             effect.delayNode.connect(effect.filterNode);
             effect.filterNode.connect(effect.feedbackGain);
             effect.feedbackGain.connect(effect.delayNode);
-          } else {
-            // Update parameters with clamping to prevent runaway feedback
-            effect.delayNode.delayTime.value = effect.time || 0.2;
-            // Clamp feedback to safe range (0.0 to 0.6) to prevent runaway
-            const safeFeedback = Math.max(0, Math.min(0.6, effect.feedback || 0.15));
-            effect.feedbackGain.gain.value = safeFeedback;
-            effect.filterNode.frequency.value = effect.damping || 5000;
           }
 
-          // Update mix
-          effect.dryGain.gain.value = 1 - (effect.mix || 0.3);
-          effect.wetGain.gain.value = effect.mix || 0.3;
+          effect.delayNode.delayTime.value = time;
+          effect.feedbackGain.gain.value = feedback;
+          effect.filterNode.frequency.value = damping;
+
+          effect.dryGain.gain.value = 1 - delayMix;
+          effect.wetGain.gain.value = delayMix;
 
           // Connect the chain: input -> dry + (input -> delay -> wet) -> mixer
           current.connect(effect.dryGain);
@@ -268,6 +260,11 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           current = effect.finalMixer;
         } else if (effect.type === 'chorus') {
           // Create chorus nodes if they don't exist
+          const chorusRate = clamp(effect.rate ?? 0.3, 0.05, 5);
+          const chorusDepth = clamp(effect.depth ?? 0.005, 0, 0.02);
+          const chorusDelay = clamp(effect.delay ?? 0.01, 0.001, 0.05);
+          const chorusMix = clamp(effect.mix ?? 0.5, 0, 1);
+
           if (!effect.delays) {
             effect.delays = [];
             effect.delayGains = [];
@@ -286,13 +283,13 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
 
               // Set up LFO
               lfoOsc.type = 'sine';
-              lfoOsc.frequency.value = effect.rate || 0.3;
-              lfoGain.gain.value = (effect.depth || 0.005) * (i + 1) * 0.5; // Different depths for each line
+              lfoOsc.frequency.value = chorusRate;
+              lfoGain.gain.value = chorusDepth * (i + 1) * 0.5; // Different depths for each line
               lfoOsc.connect(lfoGain);
               lfoGain.connect(delay.delayTime);
 
               // Set base delay time with slight variation
-              delay.delayTime.value = (effect.delay || 0.01) + i * 0.002;
+              delay.delayTime.value = chorusDelay + i * 0.002;
               gain.gain.value = 1 / 3; // Equal mix of all lines
 
               effect.delays.push(delay);
@@ -305,19 +302,16 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
             }
           } else {
             // Update parameters
-            const baseDelay = effect.delay || 0.01;
-            const rate = effect.rate || 0.3;
-            const depth = effect.depth || 0.005;
             effect.delays.forEach((delay, i) => {
-              delay.delayTime.value = baseDelay + i * 0.002;
-              effect.lfoOscs[i].frequency.value = rate;
-              effect.lfoGains[i].gain.value = depth * (i + 1) * 0.5;
+              delay.delayTime.value = chorusDelay + i * 0.002;
+              effect.lfoOscs[i].frequency.value = chorusRate;
+              effect.lfoGains[i].gain.value = chorusDepth * (i + 1) * 0.5;
             });
           }
 
           // Update mix
-          effect.dryGain.gain.value = 1 - (effect.mix || 0.5);
-          effect.wetGain.gain.value = effect.mix || 0.5;
+          effect.dryGain.gain.value = 1 - chorusMix;
+          effect.wetGain.gain.value = chorusMix;
 
           // Connect the chain: input -> dry + (input -> delays -> wet) -> mixer
           current.connect(effect.dryGain);
@@ -332,6 +326,11 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           current = effect.finalMixer;
         } else if (effect.type === 'phaser') {
           // Create phaser nodes if they don't exist
+          const phaserRate = clamp(effect.rate ?? 0.5, 0.05, 8);
+          const phaserDepth = clamp(effect.depth ?? 0.5, 0, 1);
+          const phaserFrequency = clamp(effect.frequency ?? 1000, 50, 8000);
+          const phaserMix = clamp(effect.mix ?? 0.5, 0, 1);
+
           if (!effect.filters) {
             effect.filters = [];
             effect.phaseDelays = []; // Store delay nodes for cleanup
@@ -343,8 +342,8 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
 
             // Set up LFO
             effect.lfoOsc.type = 'sine';
-            effect.lfoOsc.frequency.value = effect.rate || 0.5;
-            effect.lfoGain.gain.value = effect.depth || 0.5;
+            effect.lfoOsc.frequency.value = phaserRate;
+            effect.lfoGain.gain.value = phaserDepth;
             effect.lfoOsc.connect(effect.lfoGain);
 
             // Create 4-6 all-pass filters for phaser
@@ -352,7 +351,7 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
             for (let i = 0; i < numFilters; i++) {
               const filter = acquireNode('biquadFilter');
               filter.type = 'allpass';
-              filter.frequency.value = 1000; // Base frequency
+              filter.frequency.value = phaserFrequency + i * 500;
               filter.Q.value = 1;
               effect.filters.push(filter);
             }
@@ -372,19 +371,17 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
             effect.lfoOsc.start();
           } else {
             // Update parameters
-            effect.lfoOsc.frequency.value = effect.rate || 0.5;
-            effect.lfoGain.gain.value = effect.depth || 0.5;
+            effect.lfoOsc.frequency.value = phaserRate;
+            effect.lfoGain.gain.value = phaserDepth;
 
-            // Update base frequency for all filters
-            const baseFreq = effect.frequency || 1000;
             effect.filters.forEach((filter, i) => {
-              filter.frequency.value = baseFreq + i * 500; // Spread frequencies
+              filter.frequency.value = phaserFrequency + i * 500; // Spread frequencies
             });
           }
 
           // Update mix
-          effect.dryGain.gain.value = 1 - (effect.mix || 0.5);
-          effect.wetGain.gain.value = effect.mix || 0.5;
+          effect.dryGain.gain.value = 1 - phaserMix;
+          effect.wetGain.gain.value = phaserMix;
 
           // Connect the chain: input -> dry + (input -> filters -> wet) -> mixer
           current.connect(effect.dryGain);
@@ -396,6 +393,10 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           current = effect.finalMixer;
         } else if (effect.type === 'eq') {
           // Create EQ nodes if they don't exist
+          const lowGain = clamp(effect.lowGain ?? 0, -18, 18);
+          const midGain = clamp(effect.midGain ?? 0, -18, 18);
+          const highGain = clamp(effect.highGain ?? 0, -18, 18);
+
           if (!effect.lowFilter) {
             effect.lowFilter = acquireNode('biquadFilter');
             effect.midFilter = acquireNode('biquadFilter');
@@ -414,12 +415,11 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
             effect.highFilter.type = 'highshelf';
             effect.highFilter.frequency.value = 4000; // High frequency
             effect.highFilter.gain.value = 0; // dB
-          } else {
-            // Update parameters
-            effect.lowFilter.gain.value = effect.lowGain || 0;
-            effect.midFilter.gain.value = effect.midGain || 0;
-            effect.highFilter.gain.value = effect.highGain || 0;
           }
+
+          effect.lowFilter.gain.value = lowGain;
+          effect.midFilter.gain.value = midGain;
+          effect.highFilter.gain.value = highGain;
 
           // Connect the chain: input -> low -> mid -> high
           current.connect(effect.lowFilter);

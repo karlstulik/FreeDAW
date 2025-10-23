@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { TrackPlugin } from './TrackPlugin.js'
 import { acquireNode, releaseNode } from '@/stores/audio'
+import { clamp, getSaturationCurve } from '@/utils/audioDSP'
 
 export class KickGeneratorPlugin extends TrackPlugin {
   static name = 'Kick Generator';
@@ -176,7 +177,9 @@ export class KickGeneratorPlugin extends TrackPlugin {
     const ctx = this.audioCtx;
 
     // compute frequency with pitch offset in semitones
-    const freq = this.state.frequency * Math.pow(2, this.state.pitchOffset / 12);
+  const baseFrequency = clamp(this.state.frequency ?? 55, 20, 400);
+  const pitchOffset = this.state.pitchOffset ?? 0;
+  const freq = baseFrequency * Math.pow(2, pitchOffset / 12);
 
     const osc = acquireNode('oscillator');
     osc.type = 'sine';
@@ -214,17 +217,10 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
     let waveShaper = null;
     // optional saturation
-    if (this.state.saturation && this.state.saturation > 0.001) {
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    if (saturation > 0.0001) {
       waveShaper = acquireNode('waveShaper');
-      const amount = Math.min(1, this.state.saturation);
-      const samples = 1024;
-      const curve = new Float32Array(samples);
-      const k = amount * 50;
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-      }
-      waveShaper.curve = curve;
+      waveShaper.curve = getSaturationCurve(saturation);
       waveShaper.oversample = '4x';
       envGain.connect(waveShaper);
       lastNode = waveShaper;
@@ -233,13 +229,13 @@ export class KickGeneratorPlugin extends TrackPlugin {
     // HP filter
     const hp = acquireNode('biquadFilter');
     hp.type = 'highpass';
-    hp.frequency.value = Math.max(10, this.state.hpFreq || 20);
+    hp.frequency.value = clamp(this.state.hpFreq ?? 20, 10, 2000);
     lastNode.connect(hp);
     lastNode = hp;
 
     // compressor
     const comp = acquireNode('dynamicsCompressor');
-    comp.threshold.value = this.state.compThreshold || -24;
+    comp.threshold.value = clamp(this.state.compThreshold ?? -24, -60, 0);
     comp.knee.value = 10;
     comp.ratio.value = 3;
     comp.attack.value = 0.003;
@@ -250,7 +246,8 @@ export class KickGeneratorPlugin extends TrackPlugin {
     // plugin level with normalization boost and route to track
     const levelGain = acquireNode('gain');
     // Apply 1.3x boost to bring kick to full volume after processing chain
-    levelGain.gain.value = (this.state.level || 1) * 1.3;
+  const level = clamp(this.state.level ?? 1, 0, 2);
+  levelGain.gain.value = level * 1.3;
     lastNode.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -260,12 +257,13 @@ export class KickGeneratorPlugin extends TrackPlugin {
     // click/transient for attack
     let clickOsc = null;
     let clickG = null;
-    if (this.state.clickLevel && this.state.clickLevel > 0.0001) {
+    const clickLevel = clamp(this.state.clickLevel ?? 0, 0, 1);
+    if (clickLevel > 0.0001) {
       clickOsc = acquireNode('oscillator');
       clickOsc.type = 'square';
       clickOsc.frequency.setValueAtTime(8000, when);
       clickG = acquireNode('gain');
-      clickG.gain.setValueAtTime(this.state.clickLevel, when);
+      clickG.gain.setValueAtTime(clickLevel, when);
       clickG.gain.exponentialRampToValueAtTime(0.0001, when + 0.01);
       clickOsc.connect(clickG);
       // route click through HP (same chain)
@@ -301,7 +299,9 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
   playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     const ctx = offlineCtx;
-    const freq = this.state.frequency * Math.pow(2, this.state.pitchOffset / 12);
+  const baseFrequency = clamp(this.state.frequency ?? 55, 20, 400);
+  const pitchOffset = this.state.pitchOffset ?? 0;
+  const freq = baseFrequency * Math.pow(2, pitchOffset / 12);
 
     const osc = ctx.createOscillator();
     osc.type = 'sine';
@@ -327,17 +327,10 @@ export class KickGeneratorPlugin extends TrackPlugin {
     }
 
     let lastNode = envGain;
-    if (this.state.saturation && this.state.saturation > 0.001) {
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    if (saturation > 0.0001) {
       const ws = ctx.createWaveShaper();
-      const amount = Math.min(1, this.state.saturation);
-      const samples = 1024;
-      const curve = new Float32Array(samples);
-      const k = amount * 50;
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-      }
-      ws.curve = curve;
+      ws.curve = getSaturationCurve(saturation);
       ws.oversample = '4x';
       envGain.connect(ws);
       lastNode = ws;
@@ -345,12 +338,12 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
     const hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
-    hp.frequency.value = Math.max(10, this.state.hpFreq || 20);
+    hp.frequency.value = clamp(this.state.hpFreq ?? 20, 10, 2000);
     lastNode.connect(hp);
     lastNode = hp;
 
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = this.state.compThreshold || -24;
+    comp.threshold.value = clamp(this.state.compThreshold ?? -24, -60, 0);
     comp.knee.value = 10;
     comp.ratio.value = 3;
     comp.attack.value = 0.003;
@@ -360,15 +353,18 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
     const levelGain = ctx.createGain();
     // Apply 1.3x boost for offline rendering to match live normalization
-    levelGain.gain.value = (this.state.level || 1) * 1.3;
+    const level = clamp(this.state.level ?? 1, 0, 2);
+    levelGain.gain.value = level * 1.3;
     lastNode.connect(levelGain);
-    levelGain.connect(destination);    osc.connect(envGain);
-    if (this.state.clickLevel && this.state.clickLevel > 0.0001) {
+    levelGain.connect(destination);
+    osc.connect(envGain);
+    const clickLevel = clamp(this.state.clickLevel ?? 0, 0, 1);
+    if (clickLevel > 0.0001) {
       const clickOsc = ctx.createOscillator();
       clickOsc.type = 'square';
       clickOsc.frequency.setValueAtTime(8000, when);
       const clickG = ctx.createGain();
-      clickG.gain.setValueAtTime(this.state.clickLevel, when);
+      clickG.gain.setValueAtTime(clickLevel, when);
       clickG.gain.exponentialRampToValueAtTime(0.0001, when + 0.01);
       clickOsc.connect(clickG);
       clickG.connect(hp);

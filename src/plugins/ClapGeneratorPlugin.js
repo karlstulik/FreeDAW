@@ -1,6 +1,16 @@
 import { reactive } from 'vue'
 import { TrackPlugin } from './TrackPlugin.js'
 import { acquireNode, releaseNode } from '@/stores/audio'
+import { clamp, getSaturationCurve } from '@/utils/audioDSP'
+
+const NOISE_BUFFER_CACHE = new WeakMap();
+
+function getNoiseCache(ctx) {
+  if (!NOISE_BUFFER_CACHE.has(ctx)) {
+    NOISE_BUFFER_CACHE.set(ctx, new Map());
+  }
+  return NOISE_BUFFER_CACHE.get(ctx);
+}
 
 export class ClapGeneratorPlugin extends TrackPlugin {
   static name = 'Clap Generator';
@@ -206,55 +216,78 @@ export class ClapGeneratorPlugin extends TrackPlugin {
   }
 
   // Generate noise buffer
-  createNoiseBuffer(ctx, duration, type = 'white') {
-    const sampleRate = ctx.sampleRate;
-    const length = Math.ceil(sampleRate * duration);
-    const buffer = ctx.createBuffer(1, length, sampleRate);
-    const data = buffer.getChannelData(0);
+  createNoiseBuffer(ctx, duration, type = 'white', variantIndex = 0) {
+    const cache = getNoiseCache(ctx);
+    const safeDuration = Math.max(0.001, duration);
+    const durationKey = Math.round(safeDuration * 1000);
+    const cacheKey = `${type}:${durationKey}`;
+    let variants = cache.get(cacheKey);
+    if (!variants) {
+      variants = [];
+      cache.set(cacheKey, variants);
+    }
+    const index = clamp(Math.floor(variantIndex), 0, 7);
+    if (!variants[index]) {
+      const sampleRate = ctx.sampleRate;
+      const length = Math.max(1, Math.ceil(sampleRate * safeDuration));
+      const buffer = ctx.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
 
-    if (type === 'white') {
-      for (let i = 0; i < length; i++) {
-        data[i] = Math.random() * 2 - 1;
+      if (type === 'white') {
+        for (let i = 0; i < length; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+      } else if (type === 'pink') {
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < length; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+          data[i] *= 0.11;
+          b6 = white * 0.115926;
+        }
+      } else if (type === 'brown') {
+        let lastOut = 0.0;
+        for (let i = 0; i < length; i++) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = data[i];
+          data[i] *= 3.5;
+        }
       }
-    } else if (type === 'pink') {
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-      for (let i = 0; i < length; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-        data[i] *= 0.11; // normalize
-        b6 = white * 0.115926;
-      }
-    } else if (type === 'brown') {
-      let lastOut = 0.0;
-      for (let i = 0; i < length; i++) {
-        const white = Math.random() * 2 - 1;
-        data[i] = (lastOut + (0.02 * white)) / 1.02;
-        lastOut = data[i];
-        data[i] *= 3.5; // normalize
-      }
+
+      variants[index] = buffer;
     }
 
-    return buffer;
+    return variants[index];
   }
 
   play(when, duration) {
     this.track.ensureAudioNodes();
     const ctx = this.audioCtx;
 
+    const nyquist = ctx.sampleRate * 0.5;
+    const layerCount = Math.max(1, Math.min(8, Math.round(this.state.layers || 1)));
+    const layerSpread = clamp(this.state.layerSpread ?? 0.005, 0, 0.05);
+    const layerLevelMix = clamp(this.state.layerLevel ?? 0.7, 0, 1);
+    const outputLevel = clamp(this.state.level ?? 1, 0, 2);
+    const resonance = clamp(this.state.resonance ?? 1, 0, 10);
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    const compThreshold = clamp(this.state.compThreshold ?? -24, -60, 0);
+
     // Create multiple layers for fuller clap sound
-    for (let layer = 0; layer < this.state.layers; layer++) {
-      const layerDelay = layer * this.state.layerSpread;
+    for (let layer = 0; layer < layerCount; layer++) {
+      const layerDelay = layer * layerSpread;
       const layerWhen = when + layerDelay;
-      const layerLevel = layer === 0 ? 1.0 : this.state.layerLevel;
+      const layerLevel = layer === 0 ? 1.0 : layerLevelMix;
 
       // Create noise source
-      const noiseBuffer = this.createNoiseBuffer(ctx, 0.2, this.state.noiseType);
+      const noiseBuffer = this.createNoiseBuffer(ctx, 0.2, this.state.noiseType, layer);
       const noiseSource = acquireNode('bufferSource');
       noiseSource.buffer = noiseBuffer;
 
@@ -283,32 +316,24 @@ export class ClapGeneratorPlugin extends TrackPlugin {
       // High-pass filter
       const hp = acquireNode('biquadFilter');
       hp.type = 'highpass';
-      hp.frequency.value = Math.max(20, this.state.hpFreq || 100);
-      hp.Q.value = this.state.resonance || 1;
+      hp.frequency.value = clamp(this.state.hpFreq ?? 100, 20, nyquist);
+      hp.Q.value = resonance;
       lastNode.connect(hp);
       lastNode = hp;
 
       // Low-pass filter
       const lp = acquireNode('biquadFilter');
       lp.type = 'lowpass';
-      lp.frequency.value = Math.max(200, this.state.lpFreq || 8000);
-      lp.Q.value = this.state.resonance || 1;
+      lp.frequency.value = clamp(this.state.lpFreq ?? 8000, 200, nyquist);
+      lp.Q.value = resonance;
       lastNode.connect(lp);
       lastNode = lp;
 
       // Optional saturation
       let waveShaper = null;
-      if (this.state.saturation && this.state.saturation > 0.001) {
+      if (saturation > 0.0001) {
         waveShaper = acquireNode('waveShaper');
-        const amount = Math.min(1, this.state.saturation);
-        const samples = 1024;
-        const curve = new Float32Array(samples);
-        const k = amount * 50;
-        for (let i = 0; i < samples; i++) {
-          const x = (i * 2) / samples - 1;
-          curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-        }
-        waveShaper.curve = curve;
+        waveShaper.curve = getSaturationCurve(saturation);
         waveShaper.oversample = '4x';
         lastNode.connect(waveShaper);
         lastNode = waveShaper;
@@ -316,7 +341,7 @@ export class ClapGeneratorPlugin extends TrackPlugin {
 
       // Compressor
       const comp = acquireNode('dynamicsCompressor');
-      comp.threshold.value = this.state.compThreshold || -24;
+      comp.threshold.value = compThreshold;
       comp.knee.value = 10;
       comp.ratio.value = 3;
       comp.attack.value = 0.003;
@@ -326,7 +351,7 @@ export class ClapGeneratorPlugin extends TrackPlugin {
 
       // Level gain and route to track
       const levelGain = acquireNode('gain');
-      levelGain.gain.value = (this.state.level || 1) * 1.2; // Slight boost for clap presence
+      levelGain.gain.value = outputLevel * 1.2; // Slight boost for clap presence
       lastNode.connect(levelGain);
       levelGain.connect(this.track.gainNode);
 
@@ -355,14 +380,23 @@ export class ClapGeneratorPlugin extends TrackPlugin {
   playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     const ctx = offlineCtx;
 
+    const nyquist = ctx.sampleRate * 0.5;
+    const layerCount = Math.max(1, Math.min(8, Math.round(this.state.layers || 1)));
+    const layerSpread = clamp(this.state.layerSpread ?? 0.005, 0, 0.05);
+    const layerLevelMix = clamp(this.state.layerLevel ?? 0.7, 0, 1);
+    const outputLevel = clamp(this.state.level ?? 1, 0, 2);
+    const resonance = clamp(this.state.resonance ?? 1, 0, 10);
+    const saturation = clamp(this.state.saturation ?? 0, 0, 1);
+    const compThreshold = clamp(this.state.compThreshold ?? -24, -60, 0);
+
     // Create multiple layers for fuller clap sound
-    for (let layer = 0; layer < this.state.layers; layer++) {
-      const layerDelay = layer * this.state.layerSpread;
+    for (let layer = 0; layer < layerCount; layer++) {
+      const layerDelay = layer * layerSpread;
       const layerWhen = when + layerDelay;
-      const layerLevel = layer === 0 ? 1.0 : this.state.layerLevel;
+      const layerLevel = layer === 0 ? 1.0 : layerLevelMix;
 
       // Create noise source
-      const noiseBuffer = this.createNoiseBuffer(ctx, 0.2, this.state.noiseType);
+      const noiseBuffer = this.createNoiseBuffer(ctx, 0.2, this.state.noiseType, layer);
       const noiseSource = ctx.createBufferSource();
       noiseSource.buffer = noiseBuffer;
 
@@ -391,31 +425,23 @@ export class ClapGeneratorPlugin extends TrackPlugin {
       // High-pass filter
       const hp = ctx.createBiquadFilter();
       hp.type = 'highpass';
-      hp.frequency.value = Math.max(20, this.state.hpFreq || 100);
-      hp.Q.value = this.state.resonance || 1;
+      hp.frequency.value = clamp(this.state.hpFreq ?? 100, 20, nyquist);
+      hp.Q.value = resonance;
       lastNode.connect(hp);
       lastNode = hp;
 
       // Low-pass filter
       const lp = ctx.createBiquadFilter();
       lp.type = 'lowpass';
-      lp.frequency.value = Math.max(200, this.state.lpFreq || 8000);
-      lp.Q.value = this.state.resonance || 1;
+      lp.frequency.value = clamp(this.state.lpFreq ?? 8000, 200, nyquist);
+      lp.Q.value = resonance;
       lastNode.connect(lp);
       lastNode = lp;
 
       // Optional saturation
-      if (this.state.saturation && this.state.saturation > 0.001) {
+      if (saturation > 0.0001) {
         const ws = ctx.createWaveShaper();
-        const amount = Math.min(1, this.state.saturation);
-        const samples = 1024;
-        const curve = new Float32Array(samples);
-        const k = amount * 50;
-        for (let i = 0; i < samples; i++) {
-          const x = (i * 2) / samples - 1;
-          curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-        }
-        ws.curve = curve;
+        ws.curve = getSaturationCurve(saturation);
         ws.oversample = '4x';
         lastNode.connect(ws);
         lastNode = ws;
@@ -423,7 +449,7 @@ export class ClapGeneratorPlugin extends TrackPlugin {
 
       // Compressor
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = this.state.compThreshold || -24;
+      comp.threshold.value = compThreshold;
       comp.knee.value = 10;
       comp.ratio.value = 3;
       comp.attack.value = 0.003;
@@ -433,7 +459,7 @@ export class ClapGeneratorPlugin extends TrackPlugin {
 
       // Level gain and route to destination
       const levelGain = ctx.createGain();
-      levelGain.gain.value = (this.state.level || 1) * 1.2; // Slight boost for clap presence
+      levelGain.gain.value = outputLevel * 1.2; // Slight boost for clap presence
       lastNode.connect(levelGain);
       levelGain.connect(destination);
 
