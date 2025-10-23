@@ -186,6 +186,46 @@
                                 @update:model-value="updateEffect(t, index)"
                               />
                             </v-col>
+                            <v-col cols="3" v-if="effect.type === 'reverb'">
+                              <Knob
+                                v-model="effect.decay"
+                                label="Decay"
+                                :min="0.1"
+                                :max="5"
+                                :step="0.1"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'reverb'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'reverb'">
+                              <Knob
+                                v-model="effect.preDelay"
+                                label="Pre-Delay"
+                                :min="0"
+                                :max="0.2"
+                                :step="0.001"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="3" v-if="effect.type === 'reverb'">
+                              <Knob
+                                v-model="effect.damping"
+                                label="Damping"
+                                :min="500"
+                                :max="8000"
+                                :step="100"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
                             <!-- Add more effect types here -->
                           </v-row>
                         </v-card-text>
@@ -271,7 +311,8 @@ const getPluginComponent = (pluginType) => {
 
 const availableEffects = [
   { type: 'gain', name: 'Gain' },
-  { type: 'flanger', name: 'Flanger' }
+  { type: 'flanger', name: 'Flanger' },
+  { type: 'reverb', name: 'Reverb' }
 ]
 
 const showConfirmDialog = ref(false)
@@ -318,6 +359,14 @@ const addEffect = (track, effectType) => {
       delay: 0.005, // Base delay time in seconds
       mix: 0.5 // Dry/wet mix
     };
+  } else if (effectType === 'reverb') {
+    effect = {
+      type: 'reverb',
+      decay: 1.5, // Reverb decay time in seconds (reduced from 2.0)
+      mix: 0.25, // Dry/wet mix (reduced from 0.3 for more subtle default)
+      preDelay: 0.02, // Pre-delay time in seconds (increased from 0.01)
+      damping: 3000 // High-frequency damping in Hz
+    };
   }
   track.effects.push(effect);
   track.ensureAudioNodes();
@@ -343,6 +392,25 @@ const removeEffect = (track, index) => {
       if (effect.dryGain) releaseNode('gain', effect.dryGain);
       if (effect.wetGain) releaseNode('gain', effect.wetGain);
       if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    }
+    // Release reverb nodes
+    if (effect.type === 'reverb') {
+      if (effect.preDelayNode) releaseNode('delay', effect.preDelayNode);
+      if (effect.inputGain) releaseNode('gain', effect.inputGain);
+      if (effect.outputGain) releaseNode('gain', effect.outputGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+      // Release delay lines
+      if (effect.delays) {
+        effect.delays.forEach(delay => releaseNode('delay', delay));
+      }
+      if (effect.delayGains) {
+        effect.delayGains.forEach(gain => releaseNode('gain', gain));
+      }
+      if (effect.filters) {
+        effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
+      }
     }
     track.effects.splice(index, 1);
     track.ensureAudioNodes();

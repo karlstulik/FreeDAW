@@ -103,6 +103,85 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           effect.wetGain.connect(effect.finalMixer);
 
           current = effect.finalMixer;
+        } else if (effect.type === 'reverb') {
+          // Create reverb nodes if they don't exist
+          if (!effect.preDelayNode) {
+            effect.preDelayNode = acquireNode('delay', 0.2); // Max pre-delay of 200ms
+            effect.inputGain = acquireNode('gain');
+            effect.outputGain = acquireNode('gain');
+            effect.dryGain = acquireNode('gain');
+            effect.wetGain = acquireNode('gain');
+            effect.finalMixer = acquireNode('gain');
+
+            // Create multiple delay lines for reverb (improved Schroeder reverb)
+            effect.delays = [];
+            effect.delayGains = [];
+            effect.filters = [];
+
+            // More delay lines for better diffusion
+            const delayTimes = [0.0297, 0.0371, 0.0419, 0.0437, 0.0483, 0.0527]; // in seconds
+            const delayGains = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+
+            for (let i = 0; i < delayTimes.length; i++) {
+              const delay = acquireNode('delay', 0.1);
+              const gain = acquireNode('gain');
+              const filter = acquireNode('biquadFilter');
+
+              delay.delayTime.value = delayTimes[i];
+              gain.gain.value = delayGains[i];
+              filter.type = 'lowpass';
+              filter.frequency.value = 4000; // Default damping frequency
+              filter.Q.value = 1;
+
+              effect.delays.push(delay);
+              effect.delayGains.push(gain);
+              effect.filters.push(filter);
+            }
+
+            // Connect reverb network with better diffusion
+            effect.inputGain.connect(effect.preDelayNode);
+            for (let i = 0; i < effect.delays.length; i++) {
+              effect.preDelayNode.connect(effect.delays[i]);
+              effect.delays[i].connect(effect.filters[i]);
+              effect.filters[i].connect(effect.delayGains[i]);
+              effect.delayGains[i].connect(effect.outputGain);
+              
+              // Add cross-feedback for better diffusion
+              if (i < effect.delays.length - 1) {
+                effect.delayGains[i].connect(effect.delays[(i + 1) % effect.delays.length]);
+              }
+            }
+          } else {
+            // Update parameters
+            effect.preDelayNode.delayTime.value = effect.preDelay || 0.02;
+            effect.dryGain.gain.value = 1 - (effect.mix || 0.25);
+            effect.wetGain.gain.value = effect.mix || 0.25;
+
+            // Update damping frequency
+            const dampingFreq = effect.damping || 3000;
+            effect.filters.forEach(filter => {
+              filter.frequency.value = dampingFreq;
+            });
+
+            // Update decay by adjusting delay gains based on decay time
+            const decayTime = Math.max(0.1, effect.decay || 1.5);
+            const delayTimes = [0.0297, 0.0371, 0.0419, 0.0437, 0.0483, 0.0527];
+            for (let i = 0; i < effect.delayGains.length; i++) {
+              const baseGain = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2][i];
+              // Better exponential decay: signal should decay to -60dB over decayTime
+              const decayFactor = Math.pow(0.001, (delayTimes[i] / decayTime)); // -60dB decay
+              effect.delayGains[i].gain.value = baseGain * decayFactor;
+            }
+          }
+
+          // Connect the chain: input -> dry + (input -> reverb -> wet) -> mixer
+          current.connect(effect.dryGain);
+          current.connect(effect.inputGain);
+          effect.outputGain.connect(effect.wetGain);
+          effect.dryGain.connect(effect.finalMixer);
+          effect.wetGain.connect(effect.finalMixer);
+
+          current = effect.finalMixer;
         }
         // Add more effect types here
       }
@@ -171,6 +250,25 @@ export async function deleteTrack(tracks, track) {
       if (effect.dryGain) releaseNode('gain', effect.dryGain);
       if (effect.wetGain) releaseNode('gain', effect.wetGain);
       if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    }
+    // Release reverb nodes
+    if (effect.type === 'reverb') {
+      if (effect.preDelayNode) releaseNode('delay', effect.preDelayNode);
+      if (effect.inputGain) releaseNode('gain', effect.inputGain);
+      if (effect.outputGain) releaseNode('gain', effect.outputGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+      // Release delay lines
+      if (effect.delays) {
+        effect.delays.forEach(delay => releaseNode('delay', delay));
+      }
+      if (effect.delayGains) {
+        effect.delayGains.forEach(gain => releaseNode('gain', gain));
+      }
+      if (effect.filters) {
+        effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
+      }
     }
   }
 
