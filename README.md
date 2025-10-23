@@ -2,6 +2,8 @@
 
 A free, open-source digital audio workstation (DAW) built with Vue.js and Vuetify. Create, edit, and mix music directly in your browser with an intuitive interface featuring sequencers, tracks, and various audio generators.
 
+*Note: This project was vibe coded – created with good vibes and lots of coffee ☕*
+
 ## ✨ Features
 
 - � **Audio Generators**: Built-in plugins for generating bass, kick, snare, hi-hat, clap, white noise, and tone sounds
