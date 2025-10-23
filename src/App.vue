@@ -3,6 +3,9 @@
     <v-app-bar app color="primary" dark>
       <v-toolbar-title>FreeDAW</v-toolbar-title>
       <v-spacer></v-spacer>
+      <v-btn color="white" variant="flat" @click="handleNewProject" class="mr-2">
+        New
+      </v-btn>
       <Transport />
     </v-app-bar>
 
@@ -22,8 +25,18 @@ import Transport from './components/Transport.vue'
 import Sequencer from './components/Sequencer.vue'
 import Dialog from './components/Dialog.vue'
 import { useDaw } from '@/composables/useDaw'
+import { useDialogStore } from '@/stores/dialog'
 
-const { createTrack } = useDaw()
+const { createTrack, newProject, tracks } = useDaw()
+const { showConfirm } = useDialogStore()
+
+const handleNewProject = async () => {
+  if (tracks.length > 0) {
+    const confirmed = await showConfirm('Are you sure you want to create a new project? All unsaved changes will be lost.', 'New Project')
+    if (!confirmed) return
+  }
+  newProject()
+}
 
 const onDrop = async (e) => {
   e.preventDefault();

@@ -48,6 +48,17 @@ export const useDawStore = defineStore('daw', () => {
     updatePan,
     toggleStep,
     createTrack: (name, pluginType) => createTrack(tracks, stepsCount, name, pluginType),
+    newProject: () => {
+      // Stop playback if playing
+      stop(isPlaying, timeDisplay, currentStep);
+      // Clear all tracks
+      tracks.splice(0, tracks.length);
+      // Reset to defaults
+      bpm.value = 120;
+      stepsCount.value = 16;
+      masterVolume.value = 0.9;
+      metronomeEnabled.value = false;
+    },
     getAudioContext,
     getMasterGain
   }
