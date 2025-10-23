@@ -83,6 +83,58 @@ export class KickGeneratorPlugin extends TrackPlugin {
       hpFreq: 22,
       saturation: 0.04,
       compThreshold: -22
+    },
+    'Room Kick': {
+      frequency: 48, // Roomy kick frequency
+      pitchOffset: 0,
+      level: 0.85,
+      attack: 0.002,
+      decay: 0.5,
+      sustain: 0.0,
+      release: 0.1,
+      clickLevel: 0.012,
+      hpFreq: 20,
+      saturation: 0.06,
+      compThreshold: -20
+    },
+    'Stomp Kick': {
+      frequency: 42, // Heavy stomp frequency
+      pitchOffset: 0,
+      level: 0.92,
+      attack: 0.003,
+      decay: 0.4,
+      sustain: 0.0,
+      release: 0.08,
+      clickLevel: 0.015,
+      hpFreq: 18,
+      saturation: 0.08,
+      compThreshold: -18
+    },
+    'Electro Kick': {
+      frequency: 52, // Bright electro frequency
+      pitchOffset: 0,
+      level: 0.8,
+      attack: 0.001,
+      decay: 0.3,
+      sustain: 0.0,
+      release: 0.06,
+      clickLevel: 0.02,
+      hpFreq: 30,
+      saturation: 0.1,
+      compThreshold: -16
+    },
+    'Vinyl Kick': {
+      frequency: 38, // Vintage vinyl frequency
+      pitchOffset: 0,
+      level: 0.86,
+      attack: 0.002,
+      decay: 0.42,
+      sustain: 0.0,
+      release: 0.085,
+      clickLevel: 0.01,
+      hpFreq: 24,
+      saturation: 0.05,
+      compThreshold: -21
     }
   };
 

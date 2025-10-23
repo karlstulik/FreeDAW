@@ -125,6 +125,86 @@ export class BassGeneratorPlugin extends TrackPlugin {
       resonance: 3.0,
       saturation: 0.2,
       compThreshold: -12
+    },
+    'Sub Bass': {
+      frequency: 27.5, // A0 - ultra low sub bass
+      waveform: 'sine',
+      duration: 0.8,
+      level: 0.9,
+      attack: 0.05,
+      decay: 0.3,
+      sustain: 0.9,
+      release: 0.4,
+      detune: 0,
+      subOsc: false,
+      subLevel: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 15,
+      lpFreq: 150,
+      resonance: 1.0,
+      saturation: 0.02,
+      compThreshold: -24
+    },
+    'FM Bass': {
+      frequency: 61.74, // B2 - bright FM-style bass
+      waveform: 'sawtooth',
+      duration: 0.3,
+      level: 0.7,
+      attack: 0.005,
+      decay: 0.1,
+      sustain: 0.6,
+      release: 0.2,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.3,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 60,
+      lpFreq: 2000,
+      resonance: 2.5,
+      saturation: 0.15,
+      compThreshold: -14
+    },
+    'Wobble Bass': {
+      frequency: 49, // G1 - wobbly bass
+      waveform: 'sawtooth',
+      duration: 0.4,
+      level: 0.75,
+      attack: 0.01,
+      decay: 0.15,
+      sustain: 0.7,
+      release: 0.25,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.4,
+      vibratoRate: 2,
+      vibratoDepth: 0.3,
+      hpFreq: 40,
+      lpFreq: 1000,
+      resonance: 1.8,
+      saturation: 0.1,
+      compThreshold: -16
+    },
+    'Distorted Bass': {
+      frequency: 41.2, // E1 - heavy distorted bass
+      waveform: 'sawtooth',
+      duration: 0.35,
+      level: 0.8,
+      attack: 0.008,
+      decay: 0.12,
+      sustain: 0.5,
+      release: 0.2,
+      detune: 0,
+      subOsc: true,
+      subLevel: 0.5,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 50,
+      lpFreq: 800,
+      resonance: 2.0,
+      saturation: 0.4,
+      compThreshold: -10
     }
   };
 

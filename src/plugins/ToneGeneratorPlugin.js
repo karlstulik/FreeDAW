@@ -107,6 +107,74 @@ export class ToneGeneratorPlugin extends TrackPlugin {
       lpFreq: 4000,
       saturation: 0.15,
       compThreshold: -12
+    },
+    'Pure Sine': {
+      frequency: 261.63, // C4
+      waveform: 'sine',
+      duration: 0.5,
+      level: 0.7,
+      attack: 0.01,
+      decay: 0.2,
+      sustain: 0.8,
+      release: 0.3,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 50,
+      lpFreq: 8000,
+      saturation: 0.01,
+      compThreshold: -20
+    },
+    'Warm Triangle': {
+      frequency: 392, // G4
+      waveform: 'triangle',
+      duration: 0.4,
+      level: 0.68,
+      attack: 0.02,
+      decay: 0.15,
+      sustain: 0.7,
+      release: 0.25,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 60,
+      lpFreq: 6000,
+      saturation: 0.05,
+      compThreshold: -18
+    },
+    'Pipe Organ': {
+      frequency: 220, // A3
+      waveform: 'sine',
+      duration: 1.2,
+      level: 0.75,
+      attack: 0.05,
+      decay: 0.4,
+      sustain: 0.9,
+      release: 0.8,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 40,
+      lpFreq: 3000,
+      saturation: 0.03,
+      compThreshold: -22
+    },
+    'Tubular Bell': {
+      frequency: 987.77, // B5
+      waveform: 'sine',
+      duration: 1.5,
+      level: 0.65,
+      attack: 0.001,
+      decay: 0.8,
+      sustain: 0.1,
+      release: 1.2,
+      detune: 0,
+      vibratoRate: 0,
+      vibratoDepth: 0,
+      hpFreq: 200,
+      lpFreq: 10000,
+      saturation: 0.02,
+      compThreshold: -24
     }
   };
 
