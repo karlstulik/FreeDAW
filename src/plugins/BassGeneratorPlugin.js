@@ -8,25 +8,25 @@ export class BassGeneratorPlugin extends TrackPlugin {
   constructor(track) {
     super(track);
     this.state = reactive({
-      frequency: 80, // Bass frequency
-      waveform: 'sine',
-      duration: 0.3, // Longer default for bass
+      frequency: 65.41, // C2 - deep bass that locks with kick
+      waveform: 'sawtooth', // Rich harmonics for presence
+      duration: 0.4, // Sustained bass note
       // new controls
-      level: 1,
-      attack: 0.01,
-      decay: 0.2,
-      sustain: 0.7,
-      release: 0.3,
+      level: 0.72, // Balanced to sit under kick
+      attack: 0.008, // Smooth but quick attack
+      decay: 0.15, // Moderate decay
+      sustain: 0.65, // Strong sustain for bass line
+      release: 0.25, // Clean release
       detune: 0, // semitones
-      subOsc: false, // Enable sub-oscillator
-      subLevel: 0.5, // Sub-oscillator level
-      vibratoRate: 0, // Hz
+      subOsc: true, // Enable sub-oscillator for depth
+      subLevel: 0.4, // Subtle sub reinforcement
+      vibratoRate: 0, // Hz - disabled for tight bass
       vibratoDepth: 0, // semitones
-      hpFreq: 20,
-      lpFreq: 8000,
-      resonance: 0, // Filter resonance
-      saturation: 0,
-      compThreshold: -18
+      hpFreq: 35, // Preserve fundamental but remove rumble
+      lpFreq: 2500, // Roll off highs to stay out of mid range
+      resonance: 1.2, // Slight resonance for character
+      saturation: 0.15, // Warmth and harmonic content
+      compThreshold: -16
     });
   }
 
@@ -147,7 +147,8 @@ export class BassGeneratorPlugin extends TrackPlugin {
     last = comp;
 
     const levelGain = acquireNode('gain');
-    levelGain.gain.value = this.state.level || 1;
+    // Apply 1.4x boost to bring bass to full volume
+    levelGain.gain.value = (this.state.level || 1) * 1.4;
     last.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -186,7 +187,7 @@ export class BassGeneratorPlugin extends TrackPlugin {
     }, (cleanupTime - ctx.currentTime) * 1000);
   }
 
-  playOffline(offlineCtx, when, duration) {
+  playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     const ctx = offlineCtx;
     const osc = ctx.createOscillator(); osc.type = this.state.waveform;
     const baseFreq = this.state.frequency * Math.pow(2, this.state.detune / 12);
@@ -249,9 +250,11 @@ export class BassGeneratorPlugin extends TrackPlugin {
 
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = this.state.compThreshold || -18; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.003; comp.release.value = 0.25; last.connect(comp); last = comp;
 
-    const levelGain = ctx.createGain(); levelGain.gain.value = this.state.level || 1; last.connect(levelGain); levelGain.connect(ctx.destination);
-
-    osc.connect(env);
+    const levelGain = ctx.createGain(); 
+    // Apply 1.4x boost for offline rendering
+    levelGain.gain.value = (this.state.level || 1) * 1.4; 
+    last.connect(levelGain); 
+    levelGain.connect(destination);    osc.connect(env);
     if (subOsc && subEnv) {
       subOsc.connect(subEnv);
       subEnv.connect(last === env ? env : last);

@@ -8,22 +8,22 @@ export class ToneGeneratorPlugin extends TrackPlugin {
   constructor(track) {
     super(track);
     this.state = reactive({
-      frequency: 440, // A4
-      waveform: 'sine',
-      duration: 0.1, // seconds
+      frequency: 523.25, // C5 - bright, musical tone that cuts through mix
+      waveform: 'triangle', // Warmer than sine, cleaner than square
+      duration: 0.15, // Slightly longer for melodic presence
       // new controls
-      level: 1,
-      attack: 0.01,
-      decay: 0.1,
-      sustain: 0.8,
-      release: 0.1,
+      level: 0.7, // Balanced level for melodic elements
+      attack: 0.005, // Quick but smooth attack
+      decay: 0.08, // Short decay for plucky sound
+      sustain: 0.5, // Medium sustain for musicality
+      release: 0.12, // Clean release without click
       detune: 0, // semitones
-      vibratoRate: 0, // Hz
+      vibratoRate: 0, // Hz - disabled by default for clean tone
       vibratoDepth: 0, // semitones
-      hpFreq: 10,
-      lpFreq: 20000,
-      saturation: 0,
-      compThreshold: -24
+      hpFreq: 80, // Remove low mud that conflicts with bass
+      lpFreq: 8000, // Remove harsh highs
+      saturation: 0.08, // Subtle harmonic richness
+      compThreshold: -18
     });
   }
 
@@ -120,7 +120,8 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     last = comp;
 
     const levelGain = acquireNode('gain');
-    levelGain.gain.value = this.state.level || 1;
+    // Apply 1.5x boost to bring tone generator to full presence
+    levelGain.gain.value = (this.state.level || 1) * 1.5;
     last.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -147,7 +148,7 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     }, (cleanupTime - ctx.currentTime) * 1000);
   }
 
-  playOffline(offlineCtx, when, duration) {
+  playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     const ctx = offlineCtx;
     const osc = ctx.createOscillator(); osc.type = this.state.waveform;
     const baseFreq = this.state.frequency * Math.pow(2, this.state.detune / 12);
@@ -189,9 +190,11 @@ export class ToneGeneratorPlugin extends TrackPlugin {
 
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = this.state.compThreshold || -24; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.003; comp.release.value = 0.25; last.connect(comp); last = comp;
 
-    const levelGain = ctx.createGain(); levelGain.gain.value = this.state.level || 1; last.connect(levelGain); levelGain.connect(ctx.destination);
-
-    osc.connect(env);
+    const levelGain = ctx.createGain(); 
+    // Apply 1.5x boost for offline rendering
+    levelGain.gain.value = (this.state.level || 1) * 1.5; 
+    last.connect(levelGain); 
+    levelGain.connect(destination);    osc.connect(env);
     const playDuration = playDur;
     osc.start(when);
     osc.stop(when + playDuration + 0.05);

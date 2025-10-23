@@ -13,9 +13,9 @@ export class TrackPlugin {
   }
 
   // Play in offline context for export
-  playOffline(offlineCtx, when, duration) {
-    // Override in subclasses - default to regular play
-    return this.play(when, duration);
+  playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
+    // Override in subclasses - default implementation falls back to live renderer
+    return this.play(when, duration, destination);
   }
 
   // Get display name

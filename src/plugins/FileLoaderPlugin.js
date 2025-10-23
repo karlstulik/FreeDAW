@@ -37,14 +37,28 @@ export class FileLoaderPlugin extends TrackPlugin {
     const src = acquireNode('bufferSource');
     src.buffer = this.state.buffer;
 
-    // Create envelope gain for fade in/out
+    // Create envelope gain for fade in/out with auto-leveling
     const envelopeGain = acquireNode('gain');
-    const fadeTime = 0.005; // 5ms fade
+    const fadeTime = 0.003; // 3ms fade - fast but click-free
+    
+    // Auto-normalize: analyze buffer RMS and apply makeup gain
+    const targetRMS = 0.3; // Target RMS level
+    let bufferRMS = 0;
+    const channelData = this.state.buffer.getChannelData(0);
+    let sumSquares = 0;
+    const sampleCount = Math.min(channelData.length, 44100); // Analyze first second
+    for (let i = 0; i < sampleCount; i++) {
+      sumSquares += channelData[i] * channelData[i];
+    }
+    bufferRMS = Math.sqrt(sumSquares / sampleCount);
+    const makeupGain = bufferRMS > 0.01 ? Math.min(2.5, targetRMS / bufferRMS) : 1;
+    
     envelopeGain.gain.setValueAtTime(0, when);
-    envelopeGain.gain.linearRampToValueAtTime(1, when + fadeTime);
+    envelopeGain.gain.linearRampToValueAtTime(makeupGain, when + fadeTime);
 
     const playDuration = duration || this.state.buffer.duration;
-    envelopeGain.gain.setValueAtTime(1, when + playDuration - fadeTime);
+    const fadeOutStart = Math.max(when + fadeTime, when + playDuration - fadeTime);
+    envelopeGain.gain.setValueAtTime(makeupGain, fadeOutStart);
     envelopeGain.gain.linearRampToValueAtTime(0, when + playDuration);
 
     src.connect(envelopeGain);
@@ -63,23 +77,37 @@ export class FileLoaderPlugin extends TrackPlugin {
     }, (cleanupTime - this.audioCtx.currentTime) * 1000);
   }
 
-  playOffline(offlineCtx, when, duration) {
+  playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     if (!this.state.buffer) return;
 
     const src = offlineCtx.createBufferSource();
     src.buffer = this.state.buffer;
 
     const envelopeGain = offlineCtx.createGain();
-    const fadeTime = 0.005;
+    const fadeTime = 0.003;
+    
+    // Auto-normalize for offline rendering
+    const targetRMS = 0.3;
+    let bufferRMS = 0;
+    const channelData = this.state.buffer.getChannelData(0);
+    let sumSquares = 0;
+    const sampleCount = Math.min(channelData.length, 44100);
+    for (let i = 0; i < sampleCount; i++) {
+      sumSquares += channelData[i] * channelData[i];
+    }
+    bufferRMS = Math.sqrt(sumSquares / sampleCount);
+    const makeupGain = bufferRMS > 0.01 ? Math.min(2.5, targetRMS / bufferRMS) : 1;
+    
     envelopeGain.gain.setValueAtTime(0, when);
-    envelopeGain.gain.linearRampToValueAtTime(1, when + fadeTime);
+    envelopeGain.gain.linearRampToValueAtTime(makeupGain, when + fadeTime);
 
     const playDuration = duration || this.state.buffer.duration;
-    envelopeGain.gain.setValueAtTime(1, when + playDuration - fadeTime);
+    const fadeOutStart = Math.max(when + fadeTime, when + playDuration - fadeTime);
+    envelopeGain.gain.setValueAtTime(makeupGain, fadeOutStart);
     envelopeGain.gain.linearRampToValueAtTime(0, when + playDuration);
 
-    src.connect(envelopeGain);
-    envelopeGain.connect(offlineCtx.destination);
+  src.connect(envelopeGain);
+  envelopeGain.connect(destination);
 
     src.start(when);
     if (duration) {

@@ -8,22 +8,22 @@ export class KickGeneratorPlugin extends TrackPlugin {
   constructor(track) {
     super(track);
     this.state = reactive({
-      frequency: 60, // Starting frequency for kick
+      frequency: 55, // Deep, punchy kick frequency (A1)
       pitchOffset: 0, // semitones offset
-      level: 1, // gain multiplier for the generated sound
-      // ADSR envelope
-      attack: 0.001,
-      decay: 0.2,
-      sustain: 0.0,
-      release: 0.05,
-      // click/transient for attack
-      clickLevel: 0.02,
+      level: 0.85, // Optimized level to prevent clipping in mix
+      // ADSR envelope - tuned for clean attack and smooth decay
+      attack: 0.002, // Very fast attack for punch without click
+      decay: 0.35, // Longer decay for sustained thump
+      sustain: 0.0, // No sustain for natural kick decay
+      release: 0.08, // Smooth release to avoid tail click
+      // click/transient for attack - reduced for cleaner sound
+      clickLevel: 0.015,
       // high-pass filter to clean sub rumble
-      hpFreq: 20,
-      // saturation amount 0-1
-      saturation: 0.0,
+      hpFreq: 25, // Remove subsonic content only
+      // saturation amount 0-1 - subtle warmth
+      saturation: 0.12,
       // compressor settings (threshold in dB)
-      compThreshold: -24
+      compThreshold: -20
     });
   }
 
@@ -40,8 +40,9 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
     const osc = acquireNode('oscillator');
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq * 2, when);
-    osc.frequency.exponentialRampToValueAtTime(freq, when + Math.max(0.01, this.state.decay * 0.1));
+    // Pitch sweep: start 2.5 octaves up for punch, sweep down to fundamental
+    osc.frequency.setValueAtTime(freq * 5.66, when);
+    osc.frequency.exponentialRampToValueAtTime(freq, when + Math.max(0.02, this.state.decay * 0.15));
     // Guard: prevent double-start
     if (osc._hasStarted) {
       console.warn('KickGeneratorPlugin: Attempted to start oscillator twice!', osc, when);
@@ -106,9 +107,10 @@ export class KickGeneratorPlugin extends TrackPlugin {
     lastNode.connect(comp);
     lastNode = comp;
 
-    // plugin level and route to track
+    // plugin level with normalization boost and route to track
     const levelGain = acquireNode('gain');
-    levelGain.gain.value = this.state.level || 1;
+    // Apply 1.3x boost to bring kick to full volume after processing chain
+    levelGain.gain.value = (this.state.level || 1) * 1.3;
     lastNode.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -157,14 +159,15 @@ export class KickGeneratorPlugin extends TrackPlugin {
     }, (cleanupTime - ctx.currentTime) * 1000);
   }
 
-  playOffline(offlineCtx, when, duration) {
+  playOffline(offlineCtx, when, duration, destination = offlineCtx.destination) {
     const ctx = offlineCtx;
     const freq = this.state.frequency * Math.pow(2, this.state.pitchOffset / 12);
 
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq * 2, when);
-    osc.frequency.exponentialRampToValueAtTime(freq, when + Math.max(0.01, this.state.decay * 0.1));
+    // Pitch sweep: start 2.5 octaves up for punch, sweep down to fundamental
+    osc.frequency.setValueAtTime(freq * 5.66, when);
+    osc.frequency.exponentialRampToValueAtTime(freq, when + Math.max(0.02, this.state.decay * 0.15));
 
     const envGain = ctx.createGain();
     const playDur = duration || (this.state.decay + this.state.release + 0.05);
@@ -216,11 +219,10 @@ export class KickGeneratorPlugin extends TrackPlugin {
     lastNode = comp;
 
     const levelGain = ctx.createGain();
-    levelGain.gain.value = this.state.level || 1;
+    // Apply 1.3x boost for offline rendering to match live normalization
+    levelGain.gain.value = (this.state.level || 1) * 1.3;
     lastNode.connect(levelGain);
-    levelGain.connect(ctx.destination);
-
-    osc.connect(envGain);
+    levelGain.connect(destination);    osc.connect(envGain);
     if (this.state.clickLevel && this.state.clickLevel > 0.0001) {
       const clickOsc = ctx.createOscillator();
       clickOsc.type = 'square';

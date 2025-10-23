@@ -39,7 +39,7 @@ export const useDawStore = defineStore('daw', () => {
     pluginTypes,
     togglePlay: () => togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks),
     stop: () => stop(isPlaying, timeDisplay),
-    exportMixdown: () => exportMixdown(tracks, bpm, stepsCount),
+  exportMixdown: () => exportMixdown(tracks, bpm, stepsCount, masterVolume),
     changeTrackPlugin,
     deleteTrack: (track) => deleteTrack(tracks, track),
     updateVolume,

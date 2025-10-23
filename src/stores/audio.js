@@ -1,5 +1,11 @@
 let audioCtx = null;
 let masterGain = null;
+let masterDCFilter = null;
+let masterCompressor = null;
+let masterLimiter = null;
+let masterAnalyser = null;
+
+const MASTER_RAMP_TIME = 0.01; // smoothing window for gain changes
 
 // Node pools for reusing audio nodes to reduce GC pressure and improve performance
 // Note: AudioScheduledSourceNodes (oscillator, bufferSource) cannot be reused once started
@@ -12,6 +18,48 @@ const nodePools = {
 };
 
 const POOL_SIZE = 50; // Maximum nodes to keep in pool
+const MASTER_DEFAULT_GAIN = 0.9;
+
+function configureMasterChain(ctx) {
+  if (masterGain) return;
+
+  masterGain = ctx.createGain();
+  masterGain.gain.value = MASTER_DEFAULT_GAIN;
+
+  masterDCFilter = ctx.createBiquadFilter();
+  masterDCFilter.type = 'highpass';
+  masterDCFilter.frequency.value = 8; // remove DC offset and subsonic rumble
+  masterDCFilter.Q.value = Math.SQRT1_2;
+
+  masterCompressor = ctx.createDynamicsCompressor();
+  masterCompressor.threshold.value = -12;
+  masterCompressor.knee.value = 8;
+  masterCompressor.ratio.value = 3;
+  masterCompressor.attack.value = 0.003;
+  masterCompressor.release.value = 0.12;
+
+  masterLimiter = ctx.createDynamicsCompressor();
+  masterLimiter.threshold.value = -0.5;
+  masterLimiter.knee.value = 0;
+  masterLimiter.ratio.value = 20;
+  masterLimiter.attack.value = 0.001;
+  masterLimiter.release.value = 0.05;
+
+  // Makeup gain to bring normalized signal back to optimal level
+  const makeupGain = ctx.createGain();
+  makeupGain.gain.value = 1.2; // Compensate for compression/limiting
+
+  masterAnalyser = ctx.createAnalyser();
+  masterAnalyser.fftSize = 2048;
+  masterAnalyser.smoothingTimeConstant = 0.8;
+
+  masterGain.connect(masterDCFilter);
+  masterDCFilter.connect(masterCompressor);
+  masterCompressor.connect(makeupGain);
+  makeupGain.connect(masterLimiter);
+  masterLimiter.connect(masterAnalyser);
+  masterAnalyser.connect(ctx.destination);
+}
 
 function createNodePool(type) {
   return {
@@ -110,10 +158,7 @@ export function getAudioContext() {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContextClass();
-    // create master gain and connect to destination
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.9; // default master volume
-    masterGain.connect(audioCtx.destination);
+    configureMasterChain(audioCtx);
   }
   return audioCtx;
 }
@@ -125,8 +170,20 @@ export function getMasterGain() {
   return masterGain;
 }
 
-export function updateMasterVolume(volume) {
-  if (masterGain) {
-    masterGain.gain.value = volume;
+export function getMasterAnalyser() {
+  if (!masterAnalyser) {
+    getAudioContext();
   }
+  return masterAnalyser;
+}
+
+export function updateMasterVolume(volume) {
+  if (!audioCtx) {
+    getAudioContext();
+  }
+  if (!masterGain || !audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(now);
+  masterGain.gain.setTargetAtTime(volume, now, MASTER_RAMP_TIME);
 }

@@ -89,12 +89,26 @@ export async function deleteTrack(tracks, track) {
 
 export function updateVolume(track) {
   track.ensureAudioNodes();
-  track.gainNode.gain.value = track.volume;
+  const ctx = track.audioCtx;
+  const now = ctx.currentTime;
+  const param = track.gainNode.gain;
+  const current = param.value;
+  const target = typeof track.volume === 'number' ? track.volume : current;
+  param.cancelScheduledValues(now);
+  param.setValueAtTime(current, now);
+  param.linearRampToValueAtTime(target, now + 0.01);
 }
 
 export function updatePan(track) {
   track.ensureAudioNodes();
-  track.panNode.pan.value = track.pan;
+  const ctx = track.audioCtx;
+  const now = ctx.currentTime;
+  const param = track.panNode.pan;
+  const current = param.value;
+  const target = typeof track.pan === 'number' ? track.pan : current;
+  param.cancelScheduledValues(now);
+  param.setValueAtTime(current, now);
+  param.linearRampToValueAtTime(target, now + 0.01);
 }
 
 export function toggleStep(track, index) {
