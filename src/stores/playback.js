@@ -1,10 +1,12 @@
-import { getAudioContext, getMasterGain } from './audio'
+import { getAudioContext, getMasterGain, acquireNode, releaseNode } from './audio'
 import { formatTime, nextStepTime } from './utils'
 
 let startTime = 0; // when transport started
 let schedulerInterval = null;
-const lookahead = 0.1; // seconds
-const scheduleAhead = 0.2; // seconds
+const lookahead = 0.2; // seconds - increased for better buffering
+const scheduleAhead = 0.5; // seconds - increased for better buffering
+// track the last absolute step index we've scheduled to avoid scheduling the same AudioSource twice
+let lastScheduledIndex = -1;
 
 export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled) {
   if (!isPlaying.value) return;
@@ -25,6 +27,8 @@ export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metron
   let stepTime = startTime + stepIndex * stepDuration;
   while (stepTime < lookaheadUntil) {
     const s = stepIndex % stepsCountVal;
+    // only schedule this absolute step once
+    if (stepIndex > lastScheduledIndex) {
     // schedule step s at stepTime
     // play samples for tracks that have step true
     tracks.forEach(tr => {
@@ -37,10 +41,23 @@ export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metron
     // metronome click
     if (metronomeEnabled.value) {
       const isDownbeat = (s === 0);
-      const o = ctx.createOscillator(); o.type = 'square';
-      const g = ctx.createGain(); g.gain.value = isDownbeat ? 0.02 : 0.01;
-      o.connect(g); g.connect(getMasterGain());
-      o.start(stepTime); o.stop(stepTime + 0.06);
+      const o = acquireNode('oscillator');
+      o.type = 'square';
+      const g = acquireNode('gain');
+      g.gain.value = isDownbeat ? 0.02 : 0.01;
+      o.connect(g);
+      g.connect(getMasterGain());
+      o.start(stepTime);
+      o.stop(stepTime + 0.06);
+
+      // Schedule cleanup
+      setTimeout(() => {
+        // Don't release oscillator as it can't be reused
+        releaseNode('gain', g);
+      }, (stepTime + 0.1 - ctx.currentTime) * 1000);
+    }
+      // mark this absolute step as scheduled
+      lastScheduledIndex = stepIndex;
     }
     stepIndex++;
     stepTime = startTime + stepIndex * stepDuration;
@@ -61,19 +78,23 @@ export async function togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metron
         return;
       }
     }
-    isPlaying.value = true;
+  isPlaying.value = true;
     startTime = ctx.currentTime + 0.05; // small offset
+  // reset scheduled index when starting
+  lastScheduledIndex = -1;
     schedulerInterval = setInterval(() => {
       try {
         schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled);
       } catch (e) {
         console.error('Error in scheduler:', e);
       }
-    }, 50);
+    }, 100); // increased from 50ms to 100ms for less CPU load
   } else {
     clearInterval(schedulerInterval);
     schedulerInterval = null;
     isPlaying.value = false;
+    // reset scheduled index when stopping
+    lastScheduledIndex = -1;
   }
 }
 

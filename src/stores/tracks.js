@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin } from '@/plugins/dawPlugins'
 import { makeId } from './utils'
-import { getAudioContext, getMasterGain } from './audio'
+import { getAudioContext, getMasterGain, acquireNode, releaseNode } from './audio'
 
 export const pluginTypes = {
   'file-loader': FileLoaderPlugin,
@@ -29,9 +29,9 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
     ensureAudioNodes() {
       if (!this.gainNode) {
         const ctx = this.audioCtx;
-        this.gainNode = ctx.createGain();
+        this.gainNode = acquireNode('gain');
         this.gainNode.gain.value = this.volume;
-        this.panNode = ctx.createStereoPanner();
+        this.panNode = acquireNode('stereoPanner');
         this.panNode.pan.value = this.pan;
         this.gainNode.connect(this.panNode);
         this.panNode.connect(getMasterGain());
@@ -68,6 +68,17 @@ export async function deleteTrack(tracks, track) {
   if (track.plugin && track.plugin.destroy) {
     track.plugin.destroy();
   }
+
+  // Release audio nodes back to pool
+  if (track.gainNode) {
+    releaseNode('gain', track.gainNode);
+    track.gainNode = null;
+  }
+  if (track.panNode) {
+    releaseNode('stereoPanner', track.panNode);
+    track.panNode = null;
+  }
+
   // Remove from tracks array
   const index = tracks.indexOf(track);
   if (index > -1) {

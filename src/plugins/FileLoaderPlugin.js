@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { useDialogStore } from '@/stores/dialog'
 import { TrackPlugin } from './TrackPlugin.js'
+import { acquireNode, releaseNode } from '@/stores/audio'
 
 export class FileLoaderPlugin extends TrackPlugin {
   static name = 'File Loader';
@@ -33,11 +34,11 @@ export class FileLoaderPlugin extends TrackPlugin {
 
     this.track.ensureAudioNodes();
 
-    const src = this.audioCtx.createBufferSource();
+    const src = acquireNode('bufferSource');
     src.buffer = this.state.buffer;
 
     // Create envelope gain for fade in/out
-    const envelopeGain = this.audioCtx.createGain();
+    const envelopeGain = acquireNode('gain');
     const fadeTime = 0.005; // 5ms fade
     envelopeGain.gain.setValueAtTime(0, when);
     envelopeGain.gain.linearRampToValueAtTime(1, when + fadeTime);
@@ -53,6 +54,13 @@ export class FileLoaderPlugin extends TrackPlugin {
     if (duration) {
       src.stop(when + duration);
     }
+
+    // Schedule cleanup after sound ends
+    const cleanupTime = when + playDuration + 0.01;
+    setTimeout(() => {
+      // Don't release bufferSource as it can't be reused
+      releaseNode('gain', envelopeGain);
+    }, (cleanupTime - this.audioCtx.currentTime) * 1000);
   }
 
   playOffline(offlineCtx, when, duration) {

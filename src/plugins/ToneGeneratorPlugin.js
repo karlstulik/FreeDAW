@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { TrackPlugin } from './TrackPlugin.js'
+import { acquireNode, releaseNode } from '@/stores/audio'
 
 export class ToneGeneratorPlugin extends TrackPlugin {
   static name = 'Tone Generator';
@@ -34,7 +35,7 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     this.track.ensureAudioNodes();
 
     const ctx = this.audioCtx;
-    const osc = ctx.createOscillator();
+    const osc = acquireNode('oscillator');
     osc.type = this.state.waveform;
 
     // frequency + detune
@@ -42,7 +43,7 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     osc.frequency.setValueAtTime(baseFreq, when);
 
     // envelope
-    const env = ctx.createGain();
+    const env = acquireNode('gain');
     const playDur = duration || this.state.duration;
     const a = Math.max(0, this.state.attack);
     const d = Math.max(0, this.state.decay);
@@ -63,10 +64,10 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     let vibratoOsc = null;
     let vibratoGain = null;
     if (this.state.vibratoRate > 0 && this.state.vibratoDepth > 0) {
-      vibratoOsc = ctx.createOscillator();
+      vibratoOsc = acquireNode('oscillator');
       vibratoOsc.type = 'sine';
       vibratoOsc.frequency.setValueAtTime(this.state.vibratoRate, when);
-      vibratoGain = ctx.createGain();
+      vibratoGain = acquireNode('gain');
       // convert semitone depth to frequency multiplier modulation in Hz: we use small detune in cents
       // WebAudio detune is in cents on oscillator.detune; but we'll modulate frequency directly using gain in Hz approximation
       const depthHz = baseFreq * (Math.pow(2, this.state.vibratoDepth / 12) - 1);
@@ -80,8 +81,9 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     // processing chain: envelope -> saturation -> filters -> compressor -> level -> track
     let last = env;
 
+    let waveShaper = null;
     if (this.state.saturation && this.state.saturation > 0.001) {
-      const ws = ctx.createWaveShaper();
+      waveShaper = acquireNode('waveShaper');
       const amount = Math.min(1, this.state.saturation);
       const samples = 1024;
       const curve = new Float32Array(samples);
@@ -90,25 +92,35 @@ export class ToneGeneratorPlugin extends TrackPlugin {
         const x = (i * 2) / samples - 1;
         curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
       }
-      ws.curve = curve;
-      ws.oversample = '4x';
-      env.connect(ws);
-      last = ws;
+      waveShaper.curve = curve;
+      waveShaper.oversample = '4x';
+      env.connect(waveShaper);
+      last = waveShaper;
     }
 
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = Math.max(10, this.state.hpFreq || 10);
+    const hp = acquireNode('biquadFilter');
+    hp.type = 'highpass';
+    hp.frequency.value = Math.max(10, this.state.hpFreq || 10);
     last.connect(hp);
     last = hp;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.max(200, this.state.lpFreq || 20000);
+
+    const lp = acquireNode('biquadFilter');
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.max(200, this.state.lpFreq || 20000);
     last.connect(lp);
     last = lp;
 
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = this.state.compThreshold || -24; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.003; comp.release.value = 0.25;
+    const comp = acquireNode('dynamicsCompressor');
+    comp.threshold.value = this.state.compThreshold || -24;
+    comp.knee.value = 10;
+    comp.ratio.value = 3;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.25;
     last.connect(comp);
     last = comp;
 
-    const levelGain = ctx.createGain(); levelGain.gain.value = this.state.level || 1;
+    const levelGain = acquireNode('gain');
+    levelGain.gain.value = this.state.level || 1;
     last.connect(levelGain);
     levelGain.connect(this.track.gainNode);
 
@@ -117,6 +129,22 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     const playDuration = playDur;
     osc.start(when);
     osc.stop(when + playDuration + 0.05);
+
+    // Schedule cleanup after sound ends
+    const cleanupTime = when + playDuration + 0.1;
+    setTimeout(() => {
+      // Don't release oscillator and bufferSource nodes as they can't be reused
+      releaseNode('gain', env);
+      if (vibratoOsc) {
+        // Don't release vibratoOsc (oscillator)
+        releaseNode('gain', vibratoGain);
+      }
+      if (waveShaper) releaseNode('waveShaper', waveShaper);
+      releaseNode('biquadFilter', hp);
+      releaseNode('biquadFilter', lp);
+      releaseNode('dynamicsCompressor', comp);
+      releaseNode('gain', levelGain);
+    }, (cleanupTime - ctx.currentTime) * 1000);
   }
 
   playOffline(offlineCtx, when, duration) {

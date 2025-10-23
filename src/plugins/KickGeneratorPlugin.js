@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { TrackPlugin } from './TrackPlugin.js'
+import { acquireNode, releaseNode } from '@/stores/audio'
 
 export class KickGeneratorPlugin extends TrackPlugin {
   static name = 'Kick Generator';
@@ -37,13 +38,19 @@ export class KickGeneratorPlugin extends TrackPlugin {
     // compute frequency with pitch offset in semitones
     const freq = this.state.frequency * Math.pow(2, this.state.pitchOffset / 12);
 
-    const osc = ctx.createOscillator();
+    const osc = acquireNode('oscillator');
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq * 2, when);
     osc.frequency.exponentialRampToValueAtTime(freq, when + Math.max(0.01, this.state.decay * 0.1));
+    // Guard: prevent double-start
+    if (osc._hasStarted) {
+      console.warn('KickGeneratorPlugin: Attempted to start oscillator twice!', osc, when);
+      return;
+    }
+    osc._hasStarted = true;
 
     // Envelope (ADSR-like)
-    const envGain = ctx.createGain();
+    const envGain = acquireNode('gain');
     const playDur = duration || (this.state.decay + this.state.release + 0.05);
     const a = Math.max(0, this.state.attack);
     const d = Math.max(0, this.state.decay);
@@ -64,9 +71,10 @@ export class KickGeneratorPlugin extends TrackPlugin {
     // build processing chain
     let lastNode = envGain;
 
+    let waveShaper = null;
     // optional saturation
     if (this.state.saturation && this.state.saturation > 0.001) {
-      const ws = ctx.createWaveShaper();
+      waveShaper = acquireNode('waveShaper');
       const amount = Math.min(1, this.state.saturation);
       const samples = 1024;
       const curve = new Float32Array(samples);
@@ -75,21 +83,21 @@ export class KickGeneratorPlugin extends TrackPlugin {
         const x = (i * 2) / samples - 1;
         curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
       }
-      ws.curve = curve;
-      ws.oversample = '4x';
-      envGain.connect(ws);
-      lastNode = ws;
+      waveShaper.curve = curve;
+      waveShaper.oversample = '4x';
+      envGain.connect(waveShaper);
+      lastNode = waveShaper;
     }
 
     // HP filter
-    const hp = ctx.createBiquadFilter();
+    const hp = acquireNode('biquadFilter');
     hp.type = 'highpass';
     hp.frequency.value = Math.max(10, this.state.hpFreq || 20);
     lastNode.connect(hp);
     lastNode = hp;
 
     // compressor
-    const comp = ctx.createDynamicsCompressor();
+    const comp = acquireNode('dynamicsCompressor');
     comp.threshold.value = this.state.compThreshold || -24;
     comp.knee.value = 10;
     comp.ratio.value = 3;
@@ -99,7 +107,7 @@ export class KickGeneratorPlugin extends TrackPlugin {
     lastNode = comp;
 
     // plugin level and route to track
-    const levelGain = ctx.createGain();
+    const levelGain = acquireNode('gain');
     levelGain.gain.value = this.state.level || 1;
     lastNode.connect(levelGain);
     levelGain.connect(this.track.gainNode);
@@ -108,23 +116,45 @@ export class KickGeneratorPlugin extends TrackPlugin {
     osc.connect(envGain);
 
     // click/transient for attack
+    let clickOsc = null;
+    let clickG = null;
     if (this.state.clickLevel && this.state.clickLevel > 0.0001) {
-      const clickOsc = ctx.createOscillator();
+      clickOsc = acquireNode('oscillator');
       clickOsc.type = 'square';
       clickOsc.frequency.setValueAtTime(8000, when);
-      const clickG = ctx.createGain();
+      clickG = acquireNode('gain');
       clickG.gain.setValueAtTime(this.state.clickLevel, when);
       clickG.gain.exponentialRampToValueAtTime(0.0001, when + 0.01);
       clickOsc.connect(clickG);
       // route click through HP (same chain)
       clickG.connect(hp);
-      clickOsc.start(when);
-      clickOsc.stop(when + 0.02);
+      if (clickOsc._hasStarted) {
+        console.warn('KickGeneratorPlugin: Attempted to start clickOsc twice!', clickOsc, when);
+      } else {
+        clickOsc._hasStarted = true;
+        clickOsc.start(when);
+        clickOsc.stop(when + 0.02);
+      }
     }
 
     const playDuration = playDur;
-    osc.start(when);
-    osc.stop(when + playDuration + 0.02);
+  osc.start(when);
+  osc.stop(when + playDuration + 0.02);
+
+    // Schedule cleanup after sound ends
+    const cleanupTime = when + playDuration + 0.1;
+    setTimeout(() => {
+      // Don't release oscillator nodes as they can't be reused
+      releaseNode('gain', envGain);
+      if (waveShaper) releaseNode('waveShaper', waveShaper);
+      releaseNode('biquadFilter', hp);
+      releaseNode('dynamicsCompressor', comp);
+      releaseNode('gain', levelGain);
+      if (clickOsc) {
+        // Don't release clickOsc (oscillator)
+        releaseNode('gain', clickG);
+      }
+    }, (cleanupTime - ctx.currentTime) * 1000);
   }
 
   playOffline(offlineCtx, when, duration) {
