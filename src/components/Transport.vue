@@ -91,7 +91,7 @@ import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin } from '@/pl
 
 const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
-const { togglePlay, stop, exportMixdown, createTrack, getAudioContext } = dawStore
+const { togglePlay, stop, exportMixdown, createTrack, getAudioContext, getMasterGain } = dawStore
 const pluginTypes = dawStore.pluginTypes
 
 const handlePlay = async () => {
@@ -132,7 +132,7 @@ const previewPlugin = async (pluginType) => {
           this.panNode = audioCtx.createStereoPanner()
           this.panNode.pan.value = 0
           this.gainNode.connect(this.panNode)
-          this.panNode.connect(audioCtx.destination)
+          this.panNode.connect(getMasterGain())
         }
       }
     }

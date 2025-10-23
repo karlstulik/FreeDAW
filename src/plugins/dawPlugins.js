@@ -63,7 +63,19 @@ export class FileLoaderPlugin extends TrackPlugin {
 
     const src = this.audioCtx.createBufferSource();
     src.buffer = this.state.buffer;
-    src.connect(this.track.gainNode);
+
+    // Create envelope gain for fade in/out
+    const envelopeGain = this.audioCtx.createGain();
+    const fadeTime = 0.005; // 5ms fade
+    envelopeGain.gain.setValueAtTime(0, when);
+    envelopeGain.gain.linearRampToValueAtTime(1, when + fadeTime);
+
+    const playDuration = duration || this.state.buffer.duration;
+    envelopeGain.gain.setValueAtTime(1, when + playDuration - fadeTime);
+    envelopeGain.gain.linearRampToValueAtTime(0, when + playDuration);
+
+    src.connect(envelopeGain);
+    envelopeGain.connect(this.track.gainNode);
 
     src.start(when);
     if (duration) {
@@ -76,7 +88,18 @@ export class FileLoaderPlugin extends TrackPlugin {
 
     const src = offlineCtx.createBufferSource();
     src.buffer = this.state.buffer;
-    src.connect(offlineCtx.destination);
+
+    const envelopeGain = offlineCtx.createGain();
+    const fadeTime = 0.005;
+    envelopeGain.gain.setValueAtTime(0, when);
+    envelopeGain.gain.linearRampToValueAtTime(1, when + fadeTime);
+
+    const playDuration = duration || this.state.buffer.duration;
+    envelopeGain.gain.setValueAtTime(1, when + playDuration - fadeTime);
+    envelopeGain.gain.linearRampToValueAtTime(0, when + playDuration);
+
+    src.connect(envelopeGain);
+    envelopeGain.connect(offlineCtx.destination);
 
     src.start(when);
     if (duration) {
@@ -104,11 +127,18 @@ export class KickGeneratorPlugin extends TrackPlugin {
 
     const osc = this.audioCtx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(this.state.frequency, when);
+    osc.frequency.setValueAtTime(this.state.frequency * 2, when); // Start higher
+    osc.frequency.exponentialRampToValueAtTime(this.state.frequency, when + 0.05); // Sweep down
 
-    osc.connect(this.track.gainNode);
+    // Create envelope gain for decay
+    const envelopeGain = this.audioCtx.createGain();
+    envelopeGain.gain.setValueAtTime(1, when);
+    envelopeGain.gain.exponentialRampToValueAtTime(0.01, when + (duration || 0.2)); // Decay
 
-    const playDuration = duration || 0.1;
+    osc.connect(envelopeGain);
+    envelopeGain.connect(this.track.gainNode);
+
+    const playDuration = duration || 0.2;
     osc.start(when);
     osc.stop(when + playDuration);
   }
@@ -116,11 +146,17 @@ export class KickGeneratorPlugin extends TrackPlugin {
   playOffline(offlineCtx, when, duration) {
     const osc = offlineCtx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(this.state.frequency, when);
+    osc.frequency.setValueAtTime(this.state.frequency * 2, when);
+    osc.frequency.exponentialRampToValueAtTime(this.state.frequency, when + 0.05);
 
-    osc.connect(offlineCtx.destination);
+    const envelopeGain = offlineCtx.createGain();
+    envelopeGain.gain.setValueAtTime(1, when);
+    envelopeGain.gain.exponentialRampToValueAtTime(0.01, when + (duration || 0.2));
 
-    const playDuration = duration || 0.1;
+    osc.connect(envelopeGain);
+    envelopeGain.connect(offlineCtx.destination);
+
+    const playDuration = duration || 0.2;
     osc.start(when);
     osc.stop(when + playDuration);
   }
@@ -149,7 +185,15 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     osc.type = this.state.waveform;
     osc.frequency.value = this.state.frequency;
 
-    osc.connect(this.track.gainNode);
+    // Create envelope gain to prevent clicks
+    const envelopeGain = this.audioCtx.createGain();
+    envelopeGain.gain.setValueAtTime(0, when);
+    envelopeGain.gain.linearRampToValueAtTime(1, when + 0.01); // 10ms attack
+    envelopeGain.gain.setValueAtTime(1, when + (duration || this.state.duration) - 0.01);
+    envelopeGain.gain.linearRampToValueAtTime(0, when + (duration || this.state.duration)); // 10ms release
+
+    osc.connect(envelopeGain);
+    envelopeGain.connect(this.track.gainNode);
 
     const playDuration = duration || this.state.duration;
     osc.start(when);
@@ -161,7 +205,15 @@ export class ToneGeneratorPlugin extends TrackPlugin {
     osc.type = this.state.waveform;
     osc.frequency.value = this.state.frequency;
 
-    osc.connect(offlineCtx.destination);
+    // Create envelope gain
+    const envelopeGain = offlineCtx.createGain();
+    envelopeGain.gain.setValueAtTime(0, when);
+    envelopeGain.gain.linearRampToValueAtTime(1, when + 0.01);
+    envelopeGain.gain.setValueAtTime(1, when + (duration || this.state.duration) - 0.01);
+    envelopeGain.gain.linearRampToValueAtTime(0, when + (duration || this.state.duration));
+
+    osc.connect(envelopeGain);
+    envelopeGain.connect(offlineCtx.destination);
 
     const playDuration = duration || this.state.duration;
     osc.start(when);

@@ -4,6 +4,7 @@ import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin
 import { useDialogStore } from '@/stores/dialog'
 
 let audioCtx = null;
+let masterGain = null;
 
 export const useDawStore = defineStore('daw', () => {
   // Reactive state
@@ -23,8 +24,19 @@ export const useDawStore = defineStore('daw', () => {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AudioContextClass();
+      // create master gain and connect to destination
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = masterVolume.value || 1;
+      masterGain.connect(audioCtx.destination);
     }
     return audioCtx;
+  }
+
+  function getMasterGain() {
+    if (!masterGain) {
+      getAudioContext(); // Ensure context is created
+    }
+    return masterGain;
   }
 
   const pluginTypes = {
@@ -66,7 +78,7 @@ export const useDawStore = defineStore('daw', () => {
           this.panNode = ctx.createStereoPanner();
           this.panNode.pan.value = this.pan;
           this.gainNode.connect(this.panNode);
-          this.panNode.connect(ctx.destination);
+          this.panNode.connect(getMasterGain());
         }
       }
     });
@@ -162,8 +174,8 @@ export const useDawStore = defineStore('daw', () => {
       if (metronomeEnabled.value) {
         const isDownbeat = (s === 0);
         const o = ctx.createOscillator(); o.type = 'square';
-        const g = ctx.createGain(); g.gain.value = isDownbeat ? 0.08 : 0.04;
-        o.connect(g); g.connect(ctx.destination);
+        const g = ctx.createGain(); g.gain.value = isDownbeat ? 0.02 : 0.01;
+        o.connect(g); g.connect(getMasterGain());
         o.start(stepTime); o.stop(stepTime + 0.06);
       }
       stepIndex++;
@@ -292,6 +304,13 @@ export const useDawStore = defineStore('daw', () => {
     });
   });
 
+  // Watch masterVolume to update master gain
+  watch(masterVolume, (newVal) => {
+    if (masterGain) {
+      masterGain.gain.value = newVal;
+    }
+  });
+
   return {
     isPlaying,
     bpm,
@@ -310,6 +329,7 @@ export const useDawStore = defineStore('daw', () => {
     updatePan,
     toggleStep,
     createTrack,
-    getAudioContext
+    getAudioContext,
+    getMasterGain
   }
 })
