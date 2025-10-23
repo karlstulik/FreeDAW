@@ -55,6 +55,54 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
           effect.node.gain.value = effect.value;
           current.connect(effect.node);
           current = effect.node;
+        } else if (effect.type === 'flanger') {
+          // Create flanger nodes if they don't exist
+          if (!effect.delayNode) {
+            effect.delayNode = acquireNode('delay', 0.02); // Max delay of 20ms for flanging
+            effect.feedbackGain = acquireNode('gain');
+            effect.lfoOsc = acquireNode('oscillator');
+            effect.lfoGain = acquireNode('gain');
+            effect.dryGain = acquireNode('gain');
+            effect.wetGain = acquireNode('gain');
+            effect.finalMixer = acquireNode('gain');
+
+            // Set up LFO
+            effect.lfoOsc.type = 'sine';
+            effect.lfoOsc.frequency.value = effect.rate || 0.5;
+            effect.lfoGain.gain.value = (effect.depth || 0.5) * 0.005; // Small modulation range
+            effect.lfoOsc.connect(effect.lfoGain);
+            effect.lfoGain.connect(effect.delayNode.delayTime);
+
+            // Set up delay
+            effect.delayNode.delayTime.value = effect.delay || 0.005; // Base delay time
+            effect.feedbackGain.gain.value = effect.feedback || 0.3;
+
+            // Feedback loop
+            effect.delayNode.connect(effect.feedbackGain);
+            effect.feedbackGain.connect(effect.delayNode);
+
+            // Start LFO
+            effect.lfoOsc.start();
+          } else {
+            // Update parameters
+            effect.lfoOsc.frequency.value = effect.rate || 0.5;
+            effect.lfoGain.gain.value = (effect.depth || 0.5) * 0.005;
+            effect.delayNode.delayTime.value = effect.delay || 0.005;
+            effect.feedbackGain.gain.value = effect.feedback || 0.3;
+          }
+
+          // Update mix
+          effect.dryGain.gain.value = 1 - (effect.mix || 0.5);
+          effect.wetGain.gain.value = effect.mix || 0.5;
+
+          // Connect the chain: input -> dry + (input -> delay -> wet) -> mixer
+          current.connect(effect.dryGain);
+          current.connect(effect.delayNode);
+          effect.delayNode.connect(effect.wetGain);
+          effect.dryGain.connect(effect.finalMixer);
+          effect.wetGain.connect(effect.finalMixer);
+
+          current = effect.finalMixer;
         }
         // Add more effect types here
       }
@@ -110,6 +158,19 @@ export async function deleteTrack(tracks, track) {
     if (effect.node) {
       releaseNode('gain', effect.node);
       effect.node = null;
+    }
+    // Release flanger nodes
+    if (effect.type === 'flanger') {
+      if (effect.delayNode) releaseNode('delay', effect.delayNode);
+      if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
+      if (effect.lfoOsc) {
+        effect.lfoOsc.stop();
+        // Oscillators can't be released back to pool
+      }
+      if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
     }
   }
 

@@ -99,7 +99,16 @@
                 <v-card-title class="text-subtitle-2 pa-2 d-flex align-center">
                   Effects
                   <v-spacer></v-spacer>
-                  <v-btn icon="mdi-plus" size="small" @click="addEffect(t)" title="Add Effect"></v-btn>
+                  <v-menu>
+                    <template #activator="{ props }">
+                      <v-btn icon="mdi-plus" size="small" v-bind="props" title="Add Effect"></v-btn>
+                    </template>
+                    <v-list>
+                      <v-list-item v-for="effect in availableEffects" :key="effect.type" @click="addEffect(t, effect.type)">
+                        <v-list-item-title>{{ effect.name }}</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
                 </v-card-title>
                 <v-card-text class="pa-1">
                   <v-row dense>
@@ -123,6 +132,56 @@
                                 label="Gain"
                                 :min="0"
                                 :max="2"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="6" v-if="effect.type === 'flanger'">
+                              <Knob
+                                v-model="effect.rate"
+                                label="Rate"
+                                :min="0.1"
+                                :max="10"
+                                :step="0.1"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="6" v-if="effect.type === 'flanger'">
+                              <Knob
+                                v-model="effect.depth"
+                                label="Depth"
+                                :min="0"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="6" v-if="effect.type === 'flanger'">
+                              <Knob
+                                v-model="effect.feedback"
+                                label="Feedback"
+                                :min="0"
+                                :max="0.9"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="6" v-if="effect.type === 'flanger'">
+                              <Knob
+                                v-model="effect.delay"
+                                label="Delay"
+                                :min="0.001"
+                                :max="0.02"
+                                :step="0.001"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <v-col cols="12" v-if="effect.type === 'flanger'">
+                              <Knob
+                                v-model="effect.mix"
+                                label="Mix"
+                                :min="0"
+                                :max="1"
                                 :step="0.01"
                                 @update:model-value="updateEffect(t, index)"
                               />
@@ -210,6 +269,11 @@ const getPluginComponent = (pluginType) => {
   return pluginComponents[pluginType] || null
 }
 
+const availableEffects = [
+  { type: 'gain', name: 'Gain' },
+  { type: 'flanger', name: 'Flanger' }
+]
+
 const showConfirmDialog = ref(false)
 const trackToDelete = ref(null)
 
@@ -236,13 +300,26 @@ const renameTrack = async (track) => {
   }
 }
 
-const addEffect = (track) => {
+const addEffect = (track, effectType) => {
+  console.log('Adding effect:', effectType)
   if (!track.effects) track.effects = [];
-  // For now, add a gain effect. Later we can add a selection dialog.
-  track.effects.push({
-    type: 'gain',
-    value: 1,
-  })
+  let effect;
+  if (effectType === 'gain') {
+    effect = {
+      type: 'gain',
+      value: 1
+    };
+  } else if (effectType === 'flanger') {
+    effect = {
+      type: 'flanger',
+      rate: 0.5, // LFO rate in Hz
+      depth: 0.5, // Modulation depth
+      feedback: 0.3, // Feedback amount
+      delay: 0.005, // Base delay time in seconds
+      mix: 0.5 // Dry/wet mix
+    };
+  }
+  track.effects.push(effect);
   track.ensureAudioNodes();
   track.updateEffectsChain();
 }
@@ -253,6 +330,19 @@ const removeEffect = (track, index) => {
     if (effect.node) {
       releaseNode('gain', effect.node);
       effect.node = null;
+    }
+    // Release flanger nodes
+    if (effect.type === 'flanger') {
+      if (effect.delayNode) releaseNode('delay', effect.delayNode);
+      if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
+      if (effect.lfoOsc) {
+        effect.lfoOsc.stop();
+        // Oscillators can't be released back to pool
+      }
+      if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
+      if (effect.dryGain) releaseNode('gain', effect.dryGain);
+      if (effect.wetGain) releaseNode('gain', effect.wetGain);
+      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
     }
     track.effects.splice(index, 1);
     track.ensureAudioNodes();

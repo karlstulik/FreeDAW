@@ -14,7 +14,8 @@ const nodePools = {
   biquadFilter: [],
   waveShaper: [],
   dynamicsCompressor: [],
-  stereoPanner: []
+  stereoPanner: [],
+  delay: []
 };
 
 const POOL_SIZE = 50; // Maximum nodes to keep in pool
@@ -99,6 +100,9 @@ function createNodePool(type) {
             case 'stereoPanner':
               node.pan.value = 0;
               break;
+            case 'delay':
+              node.delayTime.value = 0;
+              break;
           }
           // Disconnect from all destinations
           if (node.disconnect) {
@@ -122,10 +126,11 @@ const pools = {
   biquadFilter: createNodePool('biquadFilter'),
   waveShaper: createNodePool('waveShaper'),
   dynamicsCompressor: createNodePool('dynamicsCompressor'),
-  stereoPanner: createNodePool('stereoPanner')
+  stereoPanner: createNodePool('stereoPanner'),
+  delay: createNodePool('delay')
 };
 
-export function acquireNode(type) {
+export function acquireNode(type, maxDelayTime = 1) {
   if (!audioCtx) getAudioContext();
   const pool = pools[type];
   if (pool && pool.acquire) {
@@ -140,6 +145,7 @@ export function acquireNode(type) {
     case 'waveShaper': return audioCtx.createWaveShaper();
     case 'dynamicsCompressor': return audioCtx.createDynamicsCompressor();
     case 'stereoPanner': return audioCtx.createStereoPanner();
+    case 'delay': return audioCtx.createDelay(maxDelayTime);
     case 'oscillator': return audioCtx.createOscillator();
     case 'bufferSource': return audioCtx.createBufferSource();
     default: throw new Error(`Unknown node type: ${type}`);
