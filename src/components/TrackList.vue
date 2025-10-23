@@ -47,32 +47,52 @@
             <v-col cols="12">
               <component :is="getPluginComponent(t.pluginType)" :plugin="t.plugin" class="mt-2" />
 
-              <v-row no-gutters class="mt-2">
-                <v-col cols="6">
-                  <v-slider
-                    v-model="t.volume"
-                    label="Volume"
-                    min="0"
-                    max="2"
-                    step="0.01"
-                    density="compact"
-                    hide-details
-                    @update:model-value="updateVolume(t)"
-                  ></v-slider>
-                </v-col>
-                <v-col cols="6">
-                  <v-slider
-                    v-model="t.pan"
-                    label="Pan"
-                    min="-1"
-                    max="1"
-                    step="0.01"
-                    density="compact"
-                    hide-details
-                    @update:model-value="updatePan(t)"
-                  ></v-slider>
-                </v-col>
-              </v-row>
+              <!-- Track Controls Section -->
+              <v-card flat color="rgba(255, 255, 255, 0.02)" class="mt-2">
+                <v-card-title class="text-subtitle-2 pa-2">Track Controls</v-card-title>
+                <v-card-text class="pa-2">
+                  <v-row dense>
+                    <v-col cols="12" md="6">
+                      <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
+                        <v-card-title class="text-caption pa-1">Volume</v-card-title>
+                        <v-card-text class="pa-1">
+                          <v-row dense>
+                            <v-col cols="12">
+                              <Knob
+                                v-model="t.volume"
+                                label="Level"
+                                :min="0"
+                                :max="2"
+                                :step="0.01"
+                                @update:model-value="updateVolume(t)"
+                              />
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
+                        <v-card-title class="text-caption pa-1">Pan</v-card-title>
+                        <v-card-text class="pa-1">
+                          <v-row dense>
+                            <v-col cols="12">
+                              <Knob
+                                v-model="t.pan"
+                                label="Position"
+                                :min="-1"
+                                :max="1"
+                                :step="0.01"
+                                @update:model-value="updatePan(t)"
+                              />
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
 
               <div v-if="displayedTracks.length > 1" class="mt-2">
                 <v-btn-group density="compact">
@@ -119,6 +139,7 @@ import FileLoaderPlugin from './plugins/FileLoaderPlugin.vue'
 import KickGeneratorPlugin from './plugins/KickGeneratorPlugin.vue'
 import ToneGeneratorPlugin from './plugins/ToneGeneratorPlugin.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import Knob from './Knob.vue'
 
 const props = defineProps({
   track: Object

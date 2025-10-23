@@ -90,44 +90,42 @@
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
-        <v-row>
-          <v-col cols="12" md="6">
-            <v-slider
-              v-model="masterVolume"
-              label="Master Volume"
-              min="0"
-              max="1"
-              step="0.01"
-              density="compact"
-              color="primary"
-              track-color="grey-darken-2"
-              thumb-color="primary"
-              prepend-icon="mdi-volume-high"
-            >
-              <template v-slot:append>
-                <v-text-field
-                  v-model="masterVolumeDisplay"
-                  density="compact"
-                  readonly
-                  style="width: 75px;"
-                  class="text-center"
-                ></v-text-field>
-              </template>
-            </v-slider>
+        <v-row dense>
+          <v-col cols="6" md="6">
+            <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
+              <v-card-title class="text-caption pa-1">Master Volume</v-card-title>
+              <v-card-text class="pa-1">
+                <v-row dense>
+                  <v-col cols="12">
+                    <Knob
+                      v-model="masterVolume"
+                      label="Level"
+                      :min="0"
+                      :max="1"
+                      :step="0.01"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
           </v-col>
-          <v-col cols="12" md="6">
-            <v-switch
-              v-model="metronomeEnabled"
-              label="Metronome"
-              density="compact"
-              color="primary"
-              prepend-icon="mdi-metronome"
-            >
-              <template v-slot:append>
-                <v-icon v-if="metronomeEnabled" color="primary">mdi-metronome-tick</v-icon>
-                <v-icon v-else color="grey">mdi-metronome</v-icon>
-              </template>
-            </v-switch>
+          <v-col cols="6" md="6">
+            <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
+              <v-card-title class="text-caption pa-1">Transport</v-card-title>
+              <v-card-text class="pa-1">
+                <v-row dense>
+                  <v-col cols="12">
+                    <v-switch
+                      v-model="metronomeEnabled"
+                      label="Metronome"
+                      density="compact"
+                      color="primary"
+                      prepend-icon="mdi-metronome"
+                    ></v-switch>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
           </v-col>
         </v-row>
       </v-card-text>
@@ -141,16 +139,13 @@ import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
 import { useDialogStore } from '@/stores/dialog'
 import Track from './Track.vue'
+import Knob from './Knob.vue'
 
 const dawStore = useDaw()
 const { tracks, masterVolume, metronomeEnabled } = storeToRefs(dawStore)
 const { toggleStep } = dawStore
 
 const dialogStore = useDialogStore()
-
-const masterVolumeDisplay = computed(() => {
-  return Math.round(masterVolume.value * 100) + '%'
-})
 
 const openTrackDialog = (track) => {
   dialogStore.showCustom(Track, { track }, track.name)
