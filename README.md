@@ -1,79 +1,100 @@
-# Vuetify (Default)
+# FreeDAW
 
-This is the official scaffolding tool for Vuetify, designed to give you a head start in building your new Vuetify application. It sets up a base template with all the necessary configurations and standard directory structure, enabling you to begin development without the hassle of setting up the project from scratch.
-
-## ❗️ Important Links
-
-- 📄 [Docs](https://vuetifyjs.com/)
-- 🚨 [Issues](https://issues.vuetifyjs.com/)
-- 🏬 [Store](https://store.vuetifyjs.com/)
-- 🎮 [Playground](https://play.vuetifyjs.com/)
-- 💬 [Discord](https://community.vuetifyjs.com)
-
-## 💿 Install
-
-Set up your project using your preferred package manager. Use the corresponding command to install the dependencies:
-
-| Package Manager                                                | Command        |
-|---------------------------------------------------------------|----------------|
-| [yarn](https://yarnpkg.com/getting-started)                   | `yarn install` |
-| [npm](https://docs.npmjs.com/cli/v7/commands/npm-install)     | `npm install`  |
-| [pnpm](https://pnpm.io/installation)                          | `pnpm install` |
-| [bun](https://bun.sh/#getting-started)                        | `bun install`  |
-
-After completing the installation, your environment is ready for Vuetify development.
+A free, open-source digital audio workstation (DAW) built with Vue.js and Vuetify. Create, edit, and mix music directly in your browser with an intuitive interface featuring sequencers, tracks, and various audio generators.
 
 ## ✨ Features
 
-- 🖼️ **Optimized Front-End Stack**: Leverage the latest Vue 3 and Vuetify 3 for a modern, reactive UI development experience. [Vue 3](https://v3.vuejs.org/) | [Vuetify 3](https://vuetifyjs.com/en/)
-- 🗃️ **State Management**: Integrated with [Pinia](https://pinia.vuejs.org/), the intuitive, modular state management solution for Vue.
-- 🚦 **Routing and Layouts**: Utilizes Vue Router for SPA navigation and vite-plugin-vue-layouts for organizing Vue file layouts. [Vue Router](https://router.vuejs.org/) | [vite-plugin-vue-layouts](https://github.com/JohnCampionJr/vite-plugin-vue-layouts)
-- ⚡ **Next-Gen Tooling**: Powered by Vite, experience fast cold starts and instant HMR (Hot Module Replacement). [Vite](https://vitejs.dev/)
-- 🧩 **Automated Component Importing**: Streamline your workflow with unplugin-vue-components, automatically importing components as you use them. [unplugin-vue-components](https://github.com/antfu/unplugin-vue-components)
+- � **Audio Generators**: Built-in plugins for generating bass, kick, snare, hi-hat, clap, white noise, and tone sounds
+- 🎹 **Sequencer**: Step sequencer for creating rhythmic patterns
+- 🎛️ **Track Management**: Multiple tracks with individual controls
+- 🎚️ **ADSR Envelope**: Adjustable attack, decay, sustain, and release controls for sound shaping
+- � **File Loading**: Load and play audio files
+- 🎮 **Real-time Playback**: Transport controls for play, pause, and stop
+- 🎨 **Modern UI**: Beautiful interface built with Vuetify and Vue 3
 
-These features are curated to provide a seamless development experience from setup to deployment, ensuring that your Vuetify application is both powerful and maintainable.
+## 🚀 Installation
 
-## 💡 Usage
+### Prerequisites
 
-This section covers how to start the development server and build your project for production.
+- Node.js (version 16 or higher)
+- npm, yarn, pnpm, or bun
 
-### Starting the Development Server
+### Setup
 
-To start the development server with hot-reload, run the following command. The server will be accessible at [http://localhost:3000](http://localhost:3000):
-
+1. Clone the repository:
 ```bash
+git clone https://github.com/yourusername/FreeDAW.git
+cd FreeDAW
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+# or
+bun install
+```
+
+3. Start the development server:
+```bash
+npm run dev
+# or
 yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-(Repeat for npm, pnpm, and bun with respective commands.)
+The application will be available at [http://localhost:5173](http://localhost:5173)
 
-> Add NODE_OPTIONS='--no-warnings' to suppress the JSON import warnings that happen as part of the Vuetify import mapping. If you are on Node [v21.3.0](https://nodejs.org/en/blog/release/v21.3.0) or higher, you can change this to NODE_OPTIONS='--disable-warning=5401'. If you don't mind the warning, you can remove this from your package.json dev script.
-
-### Building for Production
-
-To build your project for production, use:
+## 📦 Build for Production
 
 ```bash
+npm run build
+# or
 yarn build
+# or
+pnpm build
+# or
+bun build
 ```
 
-(Repeat for npm, pnpm, and bun with respective commands.)
+## 🎯 Usage
 
-Once the build process is completed, your application will be ready for deployment in a production environment.
+1. Open the application in your browser
+2. Create tracks using the track list
+3. Add audio generators or load files to each track
+4. Use the sequencer to create patterns
+5. Adjust ADSR envelopes for sound shaping
+6. Use the transport controls to play your composition
 
-## 💪 Support Vuetify Development
+## 🛠️ Tech Stack
 
-This project is built with [Vuetify](https://vuetifyjs.com/en/), a UI Library with a comprehensive collection of Vue components. Vuetify is an MIT licensed Open Source project that has been made possible due to the generous contributions by our [sponsors and backers](https://vuetifyjs.com/introduction/sponsors-and-backers/). If you are interested in supporting this project, please consider:
+- **Frontend**: Vue 3, Vuetify 3
+- **Build Tool**: Vite
+- **State Management**: Pinia
+- **Audio Processing**: Web Audio API
+- **Icons**: Material Design Icons
 
-- [Requesting Enterprise Support](https://support.vuetifyjs.com/)
-- [Sponsoring John on Github](https://github.com/users/johnleider/sponsorship)
-- [Sponsoring Kael on Github](https://github.com/users/kaelwd/sponsorship)
-- [Supporting the team on Open Collective](https://opencollective.com/vuetify)
-- [Becoming a sponsor on Patreon](https://www.patreon.com/vuetify)
-- [Becoming a subscriber on Tidelift](https://tidelift.com/subscription/npm/vuetify)
-- [Making a one-time donation with Paypal](https://paypal.me/vuetify)
+## 🤝 Contributing
 
-## 📑 License
-[MIT](http://opensource.org/licenses/MIT)
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Copyright (c) 2016-present Vuetify, LLC
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Vuetify](https://vuetifyjs.com/) - A Vue UI Library
+- Audio processing powered by the Web Audio API
