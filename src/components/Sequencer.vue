@@ -16,7 +16,7 @@
             <v-sheet
               v-for="track in tracks"
               :key="track.id"
-              height="38"
+              height="40"
               class="d-flex align-center justify-space-between mb-1"
               color="transparent"
             >
@@ -64,7 +64,8 @@
                     v-for="(step, index) in track.steps"
                     :key="index"
                     :variant="step ? 'flat' : 'outlined'"
-                    :color="step ? 'primary' : 'grey-darken-2'"
+                    :color="getStepColor(step, index)"
+                    :class="{ 'step-playing': currentStep === index, 'mr-1': true }"
                     size="small"
                     min-width="40"
                     height="40"
@@ -142,7 +143,7 @@ import Track from './Track.vue'
 import Knob from './Knob.vue'
 
 const dawStore = useDaw()
-const { tracks, masterVolume, metronomeEnabled } = storeToRefs(dawStore)
+const { tracks, masterVolume, metronomeEnabled, currentStep } = storeToRefs(dawStore)
 const { toggleStep } = dawStore
 
 const dialogStore = useDialogStore()
@@ -150,4 +151,23 @@ const dialogStore = useDialogStore()
 const openTrackDialog = (track) => {
   dialogStore.showCustom(Track, { track }, track.name)
 }
+
+const getStepColor = (step, index) => {
+  // Highlight groups of 4 steps using only two grey shades (alternating every 4)
+  const group = Math.floor(index / 4) % 2
+  const shades = ['grey-darken-1', 'grey-darken-3']
+  const baseColor = shades[group]
+
+  // Steps that are 'on' use the primary color. Empty steps use alternating greys.
+  // The playing step is visually emphasized via the `.step-playing` class rather than changing color.
+  return step ? 'primary' : baseColor
+}
 </script>
+
+<style scoped>
+.step-playing {
+  transform: scale(1.04);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.75);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+</style>

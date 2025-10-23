@@ -8,7 +8,7 @@ const scheduleAhead = 0.5; // seconds - increased for better buffering
 // track the last absolute step index we've scheduled to avoid scheduling the same AudioSource twice
 let lastScheduledIndex = -1;
 
-export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled) {
+export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled, currentStep) {
   if (!isPlaying.value) return;
   const ctx = getAudioContext();
   const now = ctx.currentTime;
@@ -19,6 +19,7 @@ export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metron
   // determine current transport time
   const elapsed = now - startTime;
   let position = Math.floor((elapsed / stepDuration)) % stepsCountVal;
+  currentStep.value = position;
   // schedule ahead
   const lookaheadUntil = now + scheduleAhead;
   // we'll iterate steps forward and schedule any that fall before lookaheadUntil
@@ -67,7 +68,7 @@ export function schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metron
   timeDisplay.value = formatTime(totalSec);
 }
 
-export async function togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks) {
+export async function togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks, currentStep) {
   const ctx = getAudioContext();
   if (!isPlaying.value) {
     if (ctx.state === 'suspended') {
@@ -84,7 +85,7 @@ export async function togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metron
   lastScheduledIndex = -1;
     schedulerInterval = setInterval(() => {
       try {
-        schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled);
+        schedule(isPlaying, tracks, bpm, stepsCount, timeDisplay, metronomeEnabled, currentStep);
       } catch (e) {
         console.error('Error in scheduler:', e);
       }
@@ -98,11 +99,12 @@ export async function togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metron
   }
 }
 
-export function stop(isPlaying, timeDisplay) {
+export function stop(isPlaying, timeDisplay, currentStep) {
   if (isPlaying.value) {
     clearInterval(schedulerInterval);
     schedulerInterval = null;
     isPlaying.value = false;
     timeDisplay.value = '0:00';
+    currentStep.value = -1;
   }
 }

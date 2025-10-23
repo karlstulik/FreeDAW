@@ -14,6 +14,7 @@ export const useDawStore = defineStore('daw', () => {
   const timeDisplay = ref('0:00');
   const masterVolume = ref(0.9);
   const metronomeEnabled = ref(false);
+  const currentStep = ref(-1);
 
   // Watch for stepsCount changes to update tracks
   watch(stepsCount, (newVal) => {
@@ -35,10 +36,11 @@ export const useDawStore = defineStore('daw', () => {
     timeDisplay,
     masterVolume,
     metronomeEnabled,
+    currentStep,
     tracks,
     pluginTypes,
-    togglePlay: () => togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks),
-    stop: () => stop(isPlaying, timeDisplay),
+    togglePlay: () => togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks, currentStep),
+    stop: () => stop(isPlaying, timeDisplay, currentStep),
   exportMixdown: () => exportMixdown(tracks, bpm, stepsCount, masterVolume),
     changeTrackPlugin,
     deleteTrack: (track) => deleteTrack(tracks, track),
