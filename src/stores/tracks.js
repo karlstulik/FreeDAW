@@ -27,6 +27,7 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
     volume: 1,
     pan: 0,
     level: 0, // For meter display
+    effects: [], // Array of effect objects
     get audioCtx() { return getAudioContext(); },
     ensureAudioNodes() {
       if (!this.gainNode) {
@@ -35,9 +36,32 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
         this.gainNode.gain.value = this.volume;
         this.panNode = acquireNode('stereoPanner');
         this.panNode.pan.value = this.pan;
-        this.gainNode.connect(this.panNode);
-        this.panNode.connect(getMasterGain());
+        this.updateEffectsChain();
       }
+    },
+    updateEffectsChain() {
+      if (!this.gainNode || !this.panNode) return;
+      // Disconnect gainNode from everything
+      this.gainNode.disconnect();
+      // Disconnect panNode from masterGain temporarily
+      this.panNode.disconnect();
+      // Start chain from gainNode
+      let current = this.gainNode;
+      for (let effect of this.effects) {
+        if (effect.type === 'gain') {
+          if (!effect.node) {
+            effect.node = acquireNode('gain');
+          }
+          effect.node.gain.value = effect.value;
+          current.connect(effect.node);
+          current = effect.node;
+        }
+        // Add more effect types here
+      }
+      // Connect to panNode
+      current.connect(this.panNode);
+      // Connect panNode to masterGain
+      this.panNode.connect(getMasterGain());
     }
   });
 
@@ -79,6 +103,14 @@ export async function deleteTrack(tracks, track) {
   if (track.panNode) {
     releaseNode('stereoPanner', track.panNode);
     track.panNode = null;
+  }
+
+  // Release effect nodes
+  for (let effect of track.effects) {
+    if (effect.node) {
+      releaseNode('gain', effect.node);
+      effect.node = null;
+    }
   }
 
   // Remove from tracks array

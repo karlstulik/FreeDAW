@@ -94,6 +94,48 @@
                 </v-card-text>
               </v-card>
 
+              <!-- Effects Section -->
+              <v-card flat color="rgba(255, 255, 255, 0.02)" class="mt-2">
+                <v-card-title class="text-subtitle-2 pa-2 d-flex align-center">
+                  Effects
+                  <v-spacer></v-spacer>
+                  <v-btn icon="mdi-plus" size="small" @click="addEffect(t)" title="Add Effect"></v-btn>
+                </v-card-title>
+                <v-card-text class="pa-1">
+                  <v-row dense>
+                    <v-col cols="12" v-if="!t.effects || t.effects.length === 0">
+                      <div class="text-center text-caption text-disabled pa-4">
+                        No effects added yet
+                      </div>
+                    </v-col>
+                    <v-col cols="12" v-for="(effect, index) in (t.effects || [])" :key="index">
+                      <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1 mb-1">
+                        <v-card-title class="text-caption pa-1 d-flex align-center">
+                          {{ effect.type }}
+                          <v-spacer></v-spacer>
+                          <v-btn icon="mdi-delete" size="x-small" color="error" @click="removeEffect(t, index)" title="Remove Effect"></v-btn>
+                        </v-card-title>
+                        <v-card-text class="pa-1">
+                          <v-row dense>
+                            <v-col cols="12" v-if="effect.type === 'gain'">
+                              <Knob
+                                v-model="effect.value"
+                                label="Gain"
+                                :min="0"
+                                :max="2"
+                                :step="0.01"
+                                @update:model-value="updateEffect(t, index)"
+                              />
+                            </v-col>
+                            <!-- Add more effect types here -->
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+
               <div v-if="displayedTracks.length > 1" class="mt-2">
                 <v-btn-group density="compact">
                   <v-btn size="small" @click="t.muted = !t.muted" :color="t.muted ? 'secondary' : 'primary'">
@@ -142,6 +184,7 @@ import BassGeneratorPlugin from './plugins/BassGeneratorPlugin.vue'
 import ClapGeneratorPlugin from './plugins/ClapGeneratorPlugin.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import Knob from './Knob.vue'
+import { releaseNode } from '@/stores/audio'
 
 const props = defineProps({
   track: Object
@@ -191,5 +234,35 @@ const renameTrack = async (track) => {
   if (newName) {
     track.name = newName
   }
+}
+
+const addEffect = (track) => {
+  if (!track.effects) track.effects = [];
+  // For now, add a gain effect. Later we can add a selection dialog.
+  track.effects.push({
+    type: 'gain',
+    value: 1,
+  })
+  track.ensureAudioNodes();
+  track.updateEffectsChain();
+}
+
+const removeEffect = (track, index) => {
+  if (track.effects && track.effects[index]) {
+    const effect = track.effects[index];
+    if (effect.node) {
+      releaseNode('gain', effect.node);
+      effect.node = null;
+    }
+    track.effects.splice(index, 1);
+    track.ensureAudioNodes();
+    track.updateEffectsChain();
+  }
+}
+
+const updateEffect = (track, index) => {
+  // Handle effect updates, e.g., update audio nodes
+  track.ensureAudioNodes();
+  track.updateEffectsChain();
 }
 </script>
