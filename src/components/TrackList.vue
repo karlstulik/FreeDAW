@@ -138,6 +138,7 @@ import { useDialogStore } from '@/stores/dialog'
 import FileLoaderPlugin from './plugins/FileLoaderPlugin.vue'
 import KickGeneratorPlugin from './plugins/KickGeneratorPlugin.vue'
 import ToneGeneratorPlugin from './plugins/ToneGeneratorPlugin.vue'
+import BassGeneratorPlugin from './plugins/BassGeneratorPlugin.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import Knob from './Knob.vue'
 
@@ -156,7 +157,8 @@ const displayedTracks = computed(() => {
 const pluginComponents = {
   'file-loader': FileLoaderPlugin,
   'kick-generator': KickGeneratorPlugin,
-  'tone-generator': ToneGeneratorPlugin
+  'tone-generator': ToneGeneratorPlugin,
+  'bass-generator': BassGeneratorPlugin
 }
 
 const getPluginComponent = (pluginType) => {

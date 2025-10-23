@@ -87,7 +87,7 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
-import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin } from '@/plugins/dawPlugins'
+import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin } from '@/plugins/dawPlugins'
 
 const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
@@ -160,7 +160,8 @@ const getPluginIcon = (pluginType) => {
   const icons = {
     'file-loader': 'mdi-file-music',
     'tone-generator': 'mdi-waveform',
-    'kick-generator': 'mdi-drum'
+    'kick-generator': 'mdi-kickstarter',
+    'bass-generator': 'mdi-speaker-wireless'
   }
   return icons[pluginType] || 'mdi-music-note'
 }
