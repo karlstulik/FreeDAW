@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin } from '@/plugins/dawPlugins'
+import { TrackPlugin, FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin, ClapGeneratorPlugin } from '@/plugins/dawPlugins'
 import { makeId } from './utils'
 import { getAudioContext, getMasterGain, acquireNode, releaseNode } from './audio'
 
@@ -7,7 +7,8 @@ export const pluginTypes = {
   'file-loader': FileLoaderPlugin,
   'tone-generator': ToneGeneratorPlugin,
   'kick-generator': KickGeneratorPlugin,
-  'bass-generator': BassGeneratorPlugin
+  'bass-generator': BassGeneratorPlugin,
+  'clap-generator': ClapGeneratorPlugin
 };
 
 export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader') {

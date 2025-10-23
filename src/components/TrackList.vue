@@ -139,6 +139,7 @@ import FileLoaderPlugin from './plugins/FileLoaderPlugin.vue'
 import KickGeneratorPlugin from './plugins/KickGeneratorPlugin.vue'
 import ToneGeneratorPlugin from './plugins/ToneGeneratorPlugin.vue'
 import BassGeneratorPlugin from './plugins/BassGeneratorPlugin.vue'
+import ClapGeneratorPlugin from './plugins/ClapGeneratorPlugin.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import Knob from './Knob.vue'
 
@@ -158,7 +159,8 @@ const pluginComponents = {
   'file-loader': FileLoaderPlugin,
   'kick-generator': KickGeneratorPlugin,
   'tone-generator': ToneGeneratorPlugin,
-  'bass-generator': BassGeneratorPlugin
+  'bass-generator': BassGeneratorPlugin,
+  'clap-generator': ClapGeneratorPlugin
 }
 
 const getPluginComponent = (pluginType) => {
