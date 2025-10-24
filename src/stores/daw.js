@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed, watch } from 'vue'
 import { getAudioContext, getMasterGain, updateMasterVolume } from './audio'
-import { pluginTypes, createTrack, changeTrackPlugin, deleteTrack, updateVolume, updatePan, toggleStep } from './tracks'
+import { pluginTypes, createTrack, changeTrackPlugin, deleteTrack, updateVolume, updatePan, toggleStep, pluginIcons } from './tracks'
 import { schedule, togglePlay, stop } from './playback'
 import { exportMixdown } from './export'
 
@@ -39,6 +39,7 @@ export const useDawStore = defineStore('daw', () => {
     currentStep,
     tracks,
     pluginTypes,
+    pluginIcons,
     togglePlay: () => togglePlay(isPlaying, bpm, stepsCount, timeDisplay, metronomeEnabled, tracks, currentStep),
     stop: () => stop(isPlaying, timeDisplay, currentStep),
   exportMixdown: () => exportMixdown(tracks, bpm, stepsCount, masterVolume),

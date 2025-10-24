@@ -15,6 +15,17 @@ export const pluginTypes = {
   'white-noise-generator': WhiteNoiseGeneratorPlugin
 };
 
+export const pluginIcons = {
+  'file-loader': 'mdi-file-music',
+  'tone-generator': 'mdi-waveform',
+  'kick-generator': 'mdi-kickstarter',
+  'bass-generator': 'mdi-speaker-wireless',
+  'clap-generator': 'mdi-hand-clap',
+  'snare-generator': 'mdi-music-note',
+  'hihat-generator': 'mdi-music-note-sixteenth',
+  'white-noise-generator': 'mdi-weather-windy'
+};
+
 export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader') {
   const id = makeId();
 
@@ -23,6 +34,7 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
     name: '', // Will be set after
     plugin: null, // Will be set after creation
     pluginType,
+    icon: pluginIcons[pluginType] || 'mdi-music-note',
     steps: [],
     gainNode: null, // Lazy initialization
     panNode: null, // Lazy initialization
@@ -469,6 +481,7 @@ export function changeTrackPlugin(track, newPluginType) {
   const PluginClass = pluginTypes[newPluginType];
   track.plugin = new PluginClass(track);
   track.pluginType = newPluginType;
+  track.icon = pluginIcons[newPluginType] || 'mdi-music-note';
 }
 
 export async function deleteTrack(tracks, track) {

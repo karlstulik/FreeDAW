@@ -59,7 +59,7 @@
               @click="selectPluginType(key)"
               class="flex-grow-1 justify-start"
             >
-              <v-icon class="me-2">{{ getPluginIcon(key) }}</v-icon>
+              <v-icon class="me-2">{{ pluginIcons[key] }}</v-icon>
               {{ plugin.name }}
             </v-btn>
             <v-btn
@@ -93,6 +93,7 @@ const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
 const { togglePlay, stop, exportMixdown, createTrack, getAudioContext, getMasterGain } = dawStore
 const pluginTypes = dawStore.pluginTypes
+const pluginIcons = dawStore.pluginIcons
 
 const handlePlay = async () => {
   try {
@@ -155,19 +156,5 @@ const previewPlugin = async (pluginType) => {
       isPreviewing.value = false
     }, 600)
   }
-}
-
-const getPluginIcon = (pluginType) => {
-  const icons = {
-    'file-loader': 'mdi-file-music',
-    'tone-generator': 'mdi-waveform',
-    'kick-generator': 'mdi-kickstarter',
-    'bass-generator': 'mdi-speaker-wireless',
-    'clap-generator': 'mdi-hand-clap',
-    'snare-generator': 'mdi-drum',
-    'hihat-generator': 'mdi-music-note-sixteenth',
-    'white-noise-generator': 'mdi-weather-windy'
-  }
-  return icons[pluginType] || 'mdi-music-note'
 }
 </script>
