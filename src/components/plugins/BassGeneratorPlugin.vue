@@ -120,7 +120,7 @@
                   <v-card-text class="pa-1">
                     <v-row dense>
                       <v-col cols="6">
-                        <Knob v-model="plugin.state.vibratoRate" label="Rate (Hz)" :min="0" :max="10" :step="0.01" />
+                        <Knob v-model="plugin.state.vibratoRate" label="Rate (Hz)" :min="0" :max="10" :step="0.01" :syncMode="true" :bpm="bpm" />
                       </v-col>
                       <v-col cols="6">
                         <Knob v-model="plugin.state.vibratoDepth" label="Depth" :min="0" :max="2" :step="0.01" />
@@ -224,6 +224,8 @@ import { ref, computed, watch, nextTick } from 'vue'
 import Knob from '../Knob.vue'
 import AdsrEnvelope from '../AdsrEnvelope.vue'
 import { BassGeneratorPlugin } from '@/plugins/BassGeneratorPlugin.js'
+import { useDawStore } from '@/stores/daw'
+import { storeToRefs } from 'pinia'
 
 const props = defineProps({
   plugin: {
@@ -231,6 +233,9 @@ const props = defineProps({
     required: true
   }
 })
+
+const dawStore = useDawStore()
+const { bpm } = storeToRefs(dawStore)
 
 const presetSelect = ref(null)
 const selectedPreset = ref('')

@@ -143,6 +143,8 @@
                                 :min="0.1"
                                 :max="10"
                                 :step="0.1"
+                                :syncMode="true"
+                                :bpm="bpm"
                                 @update:model-value="updateEffect(t, index)"
                               />
                             </v-col>
@@ -303,6 +305,8 @@
                                 :min="0.1"
                                 :max="5"
                                 :step="0.1"
+                                :syncMode="true"
+                                :bpm="bpm"
                                 @update:model-value="updateEffect(t, index)"
                               />
                             </v-col>
@@ -343,6 +347,8 @@
                                 :min="0.1"
                                 :max="5"
                                 :step="0.1"
+                                :syncMode="true"
+                                :bpm="bpm"
                                 @update:model-value="updateEffect(t, index)"
                               />
                             </v-col>
@@ -473,7 +479,7 @@ const props = defineProps({
 })
 
 const dawStore = useDaw()
-const { tracks, stepsCount } = storeToRefs(dawStore)
+const { tracks, stepsCount, bpm } = storeToRefs(dawStore)
 const { deleteTrack, updateVolume, updatePan } = dawStore
 
 const displayedTracks = computed(() => {

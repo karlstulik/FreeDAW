@@ -74,6 +74,14 @@ const props = defineProps({
   precision: {
     type: Number,
     default: 2
+  },
+  syncMode: {
+    type: Boolean,
+    default: false
+  },
+  bpm: {
+    type: Number,
+    default: 120
   }
 })
 
@@ -83,6 +91,43 @@ const knobElement = ref(null)
 const isDragging = ref(false)
 const startY = ref(0)
 const startValue = ref(0)
+
+// Musical time divisions for sync mode
+// Each entry is [displayName, multiplier relative to quarter note]
+const syncDivisions = [
+  ['1/32', 1/8],    // 1/32 note = 1/8 of quarter note in Hz
+  ['1/16', 1/4],    // 1/16 note
+  ['1/8', 1/2],     // 1/8 note
+  ['1/4', 1],       // quarter note
+  ['1/2', 2],       // half note
+  ['1', 4],         // whole note (1 bar in 4/4)
+  ['2', 8],         // 2 bars
+  ['4', 16]         // 4 bars
+]
+
+// Convert BPM to Hz for a given note division
+const getHzForDivision = (division) => {
+  const bpmVal = props.bpm || 120
+  const quarterNoteHz = bpmVal / 60 // Hz of quarter notes
+  return quarterNoteHz * division[1]
+}
+
+// Find closest sync division to a given Hz value
+const findClosestDivision = (hz) => {
+  let closest = syncDivisions[0]
+  let minDiff = Math.abs(getHzForDivision(syncDivisions[0]) - hz)
+  
+  for (const division of syncDivisions) {
+    const divHz = getHzForDivision(division)
+    const diff = Math.abs(divHz - hz)
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = division
+    }
+  }
+  
+  return closest
+}
 
 const normalizedValue = computed(() => {
   return (props.modelValue - props.min) / (props.max - props.min)
@@ -94,6 +139,11 @@ const angle = computed(() => {
 })
 
 const displayValue = computed(() => {
+  if (props.syncMode) {
+    // Display note value for sync mode
+    const division = findClosestDivision(props.modelValue)
+    return division[0]
+  }
   if (props.max - props.min > 10) {
     return Math.round(props.modelValue)
   }
@@ -108,8 +158,16 @@ const updateValue = (deltaY) => {
   // Clamp to min/max
   newValue = Math.max(props.min, Math.min(props.max, newValue))
 
-  // Apply step
-  newValue = Math.round(newValue / props.step) * props.step
+  if (props.syncMode) {
+    // Snap to nearest musical division
+    const closestDivision = findClosestDivision(newValue)
+    newValue = getHzForDivision(closestDivision)
+    // Still clamp after sync
+    newValue = Math.max(props.min, Math.min(props.max, newValue))
+  } else {
+    // Apply step
+    newValue = Math.round(newValue / props.step) * props.step
+  }
 
   emit('update:modelValue', newValue)
 }
