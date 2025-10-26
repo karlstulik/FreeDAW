@@ -91,7 +91,7 @@
       <v-divider></v-divider>
       <v-card-text>
         <v-row dense>
-          <v-col cols="6" md="6">
+          <v-col cols="6" md="4">
             <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
               <v-card-title class="text-caption pa-1">Master Volume</v-card-title>
               <v-card-text class="pa-1">
@@ -109,7 +109,7 @@
               </v-card-text>
             </v-card>
           </v-col>
-          <v-col cols="6" md="6">
+          <v-col cols="6" md="4">
             <v-card flat color="rgba(255, 255, 255, 0.01)" class="pa-1">
               <v-card-title class="text-caption pa-1">Transport</v-card-title>
               <v-card-text class="pa-1">
@@ -127,6 +127,9 @@
               </v-card-text>
             </v-card>
           </v-col>
+          <v-col cols="12" md="4">
+            <Analyser />
+          </v-col>
         </v-row>
       </v-card-text>
     </v-card>
@@ -140,6 +143,7 @@ import { useDaw } from '@/composables/useDaw'
 import { useDialogStore } from '@/stores/dialog'
 import Track from './Track.vue'
 import Knob from './Knob.vue'
+import Analyser from './Analyser.vue'
 import { tr } from 'vuetify/locale'
 
 const dawStore = useDaw()
