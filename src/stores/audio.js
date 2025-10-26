@@ -15,7 +15,8 @@ const nodePools = {
   waveShaper: [],
   dynamicsCompressor: [],
   stereoPanner: [],
-  delay: []
+  delay: [],
+  analyser: []
 };
 
 const POOL_SIZE = 50; // Maximum nodes to keep in pool
@@ -103,6 +104,12 @@ function createNodePool(type) {
             case 'delay':
               node.delayTime.value = 0;
               break;
+            case 'analyser':
+              node.fftSize = 2048;
+              node.minDecibels = -100;
+              node.maxDecibels = -30;
+              node.smoothingTimeConstant = 0.8;
+              break;
           }
           // Disconnect from all destinations
           if (node.disconnect) {
@@ -127,7 +134,8 @@ const pools = {
   waveShaper: createNodePool('waveShaper'),
   dynamicsCompressor: createNodePool('dynamicsCompressor'),
   stereoPanner: createNodePool('stereoPanner'),
-  delay: createNodePool('delay')
+  delay: createNodePool('delay'),
+  analyser: createNodePool('analyser')
 };
 
 export function acquireNode(type, maxDelayTime = 1) {
@@ -146,6 +154,12 @@ export function acquireNode(type, maxDelayTime = 1) {
     case 'dynamicsCompressor': return audioCtx.createDynamicsCompressor();
     case 'stereoPanner': return audioCtx.createStereoPanner();
     case 'delay': return audioCtx.createDelay(maxDelayTime);
+    case 'analyser': {
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.8;
+      return analyser;
+    }
     case 'oscillator': return audioCtx.createOscillator();
     case 'bufferSource': return audioCtx.createBufferSource();
     default: throw new Error(`Unknown node type: ${type}`);

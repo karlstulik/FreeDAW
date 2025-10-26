@@ -539,7 +539,6 @@ const renameTrack = async (track) => {
 }
 
 const addEffect = (track, effectType) => {
-  console.log('Adding effect:', effectType)
   if (!track.effects) track.effects = [];
   let effect;
   if (effectType === 'gain') {

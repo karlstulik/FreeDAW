@@ -5,6 +5,8 @@ import { pluginTypes, createTrack, changeTrackPlugin, deleteTrack, updateVolume,
 import { schedule, togglePlay, stop } from './playback'
 import { exportMixdown } from './export'
 
+let meterLoopStarted = false;
+
 export const useDawStore = defineStore('daw', () => {
   // Reactive state
   const isPlaying = ref(false);
@@ -29,6 +31,29 @@ export const useDawStore = defineStore('daw', () => {
     updateMasterVolume(newVal);
   });
 
+  if (!meterLoopStarted && typeof window !== 'undefined') {
+    meterLoopStarted = true;
+    // Lightweight UI loop that keeps track meters responsive without extra timers
+    const updateTrackMeters = () => {
+      tracks.forEach(track => {
+        if (!track.meterAnalyser || !track.meterData) {
+          return;
+        }
+        track.meterAnalyser.getFloatTimeDomainData(track.meterData);
+        let sumSquares = 0;
+        for (let i = 0; i < track.meterData.length; i++) {
+          const sample = track.meterData[i];
+          sumSquares += sample * sample;
+        }
+        const rms = Math.sqrt(sumSquares / track.meterData.length);
+        const smoothing = 0.6;
+        track.level = track.level * smoothing + rms * (1 - smoothing);
+      });
+      window.requestAnimationFrame(updateTrackMeters);
+    };
+    window.requestAnimationFrame(updateTrackMeters);
+  }
+
   return {
     isPlaying,
     bpm,
@@ -52,8 +77,10 @@ export const useDawStore = defineStore('daw', () => {
     newProject: () => {
       // Stop playback if playing
       stop(isPlaying, timeDisplay, currentStep);
-      // Clear all tracks
-      tracks.splice(0, tracks.length);
+      // Clear all tracks via proper deletion to release audio nodes
+      tracks.slice().forEach(track => {
+        deleteTrack(tracks, track);
+      });
       // Reset to defaults
       bpm.value = 120;
       stepsCount.value = 16;

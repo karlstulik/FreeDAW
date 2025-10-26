@@ -44,6 +44,9 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
     pan: 0,
     level: 0, // For meter display
     effects: [], // Array of effect objects
+    meterGainNode: null,
+    meterAnalyser: null,
+    meterData: null,
     get audioCtx() { return getAudioContext(); },
     ensureAudioNodes() {
       if (!this.gainNode) {
@@ -52,15 +55,45 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
         this.gainNode.gain.value = this.volume;
         this.panNode = acquireNode('stereoPanner');
         this.panNode.pan.value = this.pan;
+        this.ensureMeterNodes();
         this.updateEffectsChain();
+      }
+    },
+    ensureMeterNodes() {
+      if (!this.meterGainNode) {
+        this.meterGainNode = acquireNode('gain');
+        this.meterGainNode.gain.value = 1;
+      }
+      if (!this.meterAnalyser) {
+        this.meterAnalyser = acquireNode('analyser');
+        this.meterAnalyser.fftSize = 256;
+        this.meterAnalyser.minDecibels = -100;
+        this.meterAnalyser.maxDecibels = -10;
+        this.meterAnalyser.smoothingTimeConstant = 0.75;
+        this.meterData = new Float32Array(this.meterAnalyser.fftSize);
       }
     },
     updateEffectsChain() {
       if (!this.gainNode || !this.panNode) return;
+      this.ensureMeterNodes();
       // Disconnect gainNode from everything
       this.gainNode.disconnect();
       // Disconnect panNode from masterGain temporarily
       this.panNode.disconnect();
+      if (this.meterGainNode) {
+        try {
+          this.meterGainNode.disconnect();
+        } catch (e) {
+          // ignore
+        }
+      }
+      if (this.meterAnalyser) {
+        try {
+          this.meterAnalyser.disconnect();
+        } catch (e) {
+          // ignore
+        }
+      }
       // Start chain from gainNode
       let current = this.gainNode;
       for (let effect of this.effects) {
@@ -454,6 +487,12 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
       }
       // Connect to panNode
       current.connect(this.panNode);
+      // Branch into metering path without affecting audio output
+      if (this.meterGainNode && this.meterAnalyser) {
+        this.ensureMeterNodes();
+        current.connect(this.meterGainNode);
+        this.meterGainNode.connect(this.meterAnalyser);
+      }
       // Connect panNode to masterGain
       this.panNode.connect(getMasterGain());
     }
@@ -499,6 +538,15 @@ export async function deleteTrack(tracks, track) {
     releaseNode('stereoPanner', track.panNode);
     track.panNode = null;
   }
+  if (track.meterGainNode) {
+    releaseNode('gain', track.meterGainNode);
+    track.meterGainNode = null;
+  }
+  if (track.meterAnalyser) {
+    releaseNode('analyser', track.meterAnalyser);
+    track.meterAnalyser = null;
+  }
+  track.meterData = null;
 
   // Release effect nodes
   for (let effect of track.effects) {
