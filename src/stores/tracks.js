@@ -499,7 +499,9 @@ export function createTrack(tracks, stepsCount, name, pluginType = 'file-loader'
   });
 
   const PluginClass = pluginTypes[pluginType];
-  track.plugin = new PluginClass(track);
+  const presets = PluginClass.presets;
+  const firstPreset = presets ? Object.keys(presets)[0] : null;
+  track.plugin = new PluginClass(track, firstPreset);
   track.name = name || (PluginClass.name + ' ' + (tracks.filter(t => t.pluginType === pluginType).length + 1));
 
   const stepsCountVal = parseInt(stepsCount.value, 10) || 16;
@@ -518,9 +520,71 @@ export function changeTrackPlugin(track, newPluginType) {
 
   // Create new plugin
   const PluginClass = pluginTypes[newPluginType];
-  track.plugin = new PluginClass(track);
+  const presets = PluginClass.presets;
+  const firstPreset = presets ? Object.keys(presets)[0] : null;
+  track.plugin = new PluginClass(track, firstPreset);
   track.pluginType = newPluginType;
   track.icon = pluginIcons[newPluginType] || 'mdi-music-note';
+}
+
+function releaseEffectNodes(effect) {
+  if (effect.node) {
+    releaseNode('gain', effect.node);
+    effect.node = null;
+  }
+  if (effect.type === 'flanger') {
+    if (effect.delayNode) releaseNode('delay', effect.delayNode);
+    if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
+    if (effect.lfoOsc) effect.lfoOsc.stop();
+    if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+  } else if (effect.type === 'reverb') {
+    if (effect.preDelayNode) releaseNode('delay', effect.preDelayNode);
+    if (effect.inputGain) releaseNode('gain', effect.inputGain);
+    if (effect.outputGain) releaseNode('gain', effect.outputGain);
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    if (effect.delays) effect.delays.forEach(delay => releaseNode('delay', delay));
+    if (effect.delayGains) effect.delayGains.forEach(gain => releaseNode('gain', gain));
+    if (effect.filters) effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
+  } else if (effect.type === 'delay') {
+    if (effect.delayNode) releaseNode('delay', effect.delayNode);
+    if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+    if (effect.filterNode) releaseNode('biquadFilter', effect.filterNode);
+  } else if (effect.type === 'distortion') {
+    if (effect.waveShaper) releaseNode('waveShaper', effect.waveShaper);
+    if (effect.inputGain) releaseNode('gain', effect.inputGain);
+    if (effect.outputGain) releaseNode('gain', effect.outputGain);
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+  } else if (effect.type === 'chorus') {
+    if (effect.delays) effect.delays.forEach(delay => releaseNode('delay', delay));
+    if (effect.delayGains) effect.delayGains.forEach(gain => releaseNode('gain', gain));
+    if (effect.lfoOscs) effect.lfoOscs.forEach(osc => osc.stop());
+    if (effect.lfoGains) effect.lfoGains.forEach(gain => releaseNode('gain', gain));
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+  } else if (effect.type === 'phaser') {
+    if (effect.filters) effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
+    if (effect.phaseDelays) effect.phaseDelays.forEach(delay => releaseNode('delay', delay));
+    if (effect.lfoOsc) effect.lfoOsc.stop();
+    if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
+    if (effect.dryGain) releaseNode('gain', effect.dryGain);
+    if (effect.wetGain) releaseNode('gain', effect.wetGain);
+    if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
+  } else if (effect.type === 'eq') {
+    if (effect.lowFilter) releaseNode('biquadFilter', effect.lowFilter);
+    if (effect.midFilter) releaseNode('biquadFilter', effect.midFilter);
+    if (effect.highFilter) releaseNode('biquadFilter', effect.highFilter);
+  }
 }
 
 export async function deleteTrack(tracks, track) {
@@ -550,100 +614,7 @@ export async function deleteTrack(tracks, track) {
 
   // Release effect nodes
   for (let effect of track.effects) {
-    if (effect.node) {
-      releaseNode('gain', effect.node);
-      effect.node = null;
-    }
-    // Release flanger nodes
-    if (effect.type === 'flanger') {
-      if (effect.delayNode) releaseNode('delay', effect.delayNode);
-      if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
-      if (effect.lfoOsc) {
-        effect.lfoOsc.stop();
-        // Oscillators can't be released back to pool
-      }
-      if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-    }
-    // Release reverb nodes
-    if (effect.type === 'reverb') {
-      if (effect.preDelayNode) releaseNode('delay', effect.preDelayNode);
-      if (effect.inputGain) releaseNode('gain', effect.inputGain);
-      if (effect.outputGain) releaseNode('gain', effect.outputGain);
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-      // Release delay lines
-      if (effect.delays) {
-        effect.delays.forEach(delay => releaseNode('delay', delay));
-      }
-      if (effect.delayGains) {
-        effect.delayGains.forEach(gain => releaseNode('gain', gain));
-      }
-      if (effect.filters) {
-        effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
-      }
-    }
-    // Release delay nodes
-    if (effect.type === 'delay') {
-      if (effect.delayNode) releaseNode('delay', effect.delayNode);
-      if (effect.feedbackGain) releaseNode('gain', effect.feedbackGain);
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-      if (effect.filterNode) releaseNode('biquadFilter', effect.filterNode);
-    }
-    // Release distortion nodes
-    if (effect.type === 'distortion') {
-      if (effect.waveShaper) releaseNode('waveShaper', effect.waveShaper);
-      if (effect.inputGain) releaseNode('gain', effect.inputGain);
-      if (effect.outputGain) releaseNode('gain', effect.outputGain);
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-    }
-    // Release chorus nodes
-    if (effect.type === 'chorus') {
-      if (effect.delays) {
-        effect.delays.forEach(delay => releaseNode('delay', delay));
-      }
-      if (effect.delayGains) {
-        effect.delayGains.forEach(gain => releaseNode('gain', gain));
-      }
-      if (effect.lfoOscs) {
-        effect.lfoOscs.forEach(osc => osc.stop()); // Can't release oscillators
-      }
-      if (effect.lfoGains) {
-        effect.lfoGains.forEach(gain => releaseNode('gain', gain));
-      }
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-    }
-    // Release phaser nodes
-    if (effect.type === 'phaser') {
-      if (effect.filters) {
-        effect.filters.forEach(filter => releaseNode('biquadFilter', filter));
-      }
-      if (effect.phaseDelays) {
-        effect.phaseDelays.forEach(delay => releaseNode('delay', delay));
-      }
-      if (effect.lfoOsc) {
-        effect.lfoOsc.stop(); // Can't release oscillators
-      }
-      if (effect.lfoGain) releaseNode('gain', effect.lfoGain);
-      if (effect.dryGain) releaseNode('gain', effect.dryGain);
-      if (effect.wetGain) releaseNode('gain', effect.wetGain);
-      if (effect.finalMixer) releaseNode('gain', effect.finalMixer);
-    }
-    // Release EQ nodes
-    if (effect.type === 'eq') {
-      if (effect.lowFilter) releaseNode('biquadFilter', effect.lowFilter);
-      if (effect.midFilter) releaseNode('biquadFilter', effect.midFilter);
-      if (effect.highFilter) releaseNode('biquadFilter', effect.highFilter);
-    }
+    releaseEffectNodes(effect);
   }
 
   // Remove from tracks array
@@ -653,28 +624,23 @@ export async function deleteTrack(tracks, track) {
   }
 }
 
-export function updateVolume(track) {
+function updateAudioParam(track, param, value) {
   track.ensureAudioNodes();
   const ctx = track.audioCtx;
   const now = ctx.currentTime;
-  const param = track.gainNode.gain;
   const current = param.value;
-  const target = typeof track.volume === 'number' ? track.volume : current;
+  const target = typeof value === 'number' ? value : current;
   param.cancelScheduledValues(now);
   param.setValueAtTime(current, now);
   param.linearRampToValueAtTime(target, now + 0.01);
 }
 
+export function updateVolume(track) {
+  updateAudioParam(track, track.gainNode.gain, track.volume);
+}
+
 export function updatePan(track) {
-  track.ensureAudioNodes();
-  const ctx = track.audioCtx;
-  const now = ctx.currentTime;
-  const param = track.panNode.pan;
-  const current = param.value;
-  const target = typeof track.pan === 'number' ? track.pan : current;
-  param.cancelScheduledValues(now);
-  param.setValueAtTime(current, now);
-  param.linearRampToValueAtTime(target, now + 0.01);
+  updateAudioParam(track, track.panNode.pan, track.pan);
 }
 
 export function toggleStep(track, index) {

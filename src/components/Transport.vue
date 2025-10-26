@@ -87,7 +87,6 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDaw } from '@/composables/useDaw'
-import { FileLoaderPlugin, ToneGeneratorPlugin, KickGeneratorPlugin, BassGeneratorPlugin, ClapGeneratorPlugin, SnareGeneratorPlugin, HiHatGeneratorPlugin, WhiteNoiseGeneratorPlugin } from '@/plugins/dawPlugins'
 
 const dawStore = useDaw()
 const { isPlaying, bpm, stepsCount, timeDisplay, tracks } = storeToRefs(dawStore)
@@ -141,7 +140,9 @@ const previewPlugin = async (pluginType) => {
     // Create plugin instance
     let plugin
     const PluginClass = pluginTypes[pluginType]
-    plugin = new PluginClass(tempTrack)
+    const presets = PluginClass.presets
+    const firstPreset = presets ? Object.keys(presets)[0] : null
+    plugin = new PluginClass(tempTrack, firstPreset)
 
     // Play preview
     const now = audioCtx.currentTime + 0.1 // Small delay
