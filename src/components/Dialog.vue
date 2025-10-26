@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="isOpen" @update:model-value="close" max-width="800" :persistent="type === 'confirm' || type === 'prompt'">
+  <v-dialog :model-value="isOpen" @update:model-value="close" max-width="800" :persistent="type === 'confirm' || type === 'prompt'" class="dialog-margin">
     <v-card>
       <v-card-text>
         <div v-if="type === 'custom'">
@@ -33,3 +33,15 @@ const buttonText = computed(() => {
   return 'OK'
 })
 </script>
+
+<style>
+.dialog-margin {
+  margin-top: 64px;
+}
+
+@media (max-width: 600px) {
+  .dialog-margin {
+    margin-top: 56px;
+  }
+}
+</style>

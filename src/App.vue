@@ -1,6 +1,6 @@
 <template>
   <v-app @dragover.prevent @drop="onDrop">
-    <v-app-bar app color="primary" dark>
+    <v-app-bar app color="primary" dark style="z-index: 3000">
       <v-toolbar-title>FreeDAW</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn color="white" variant="flat" @click="handleNewProject" class="mr-2">
